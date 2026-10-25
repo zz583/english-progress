@@ -276,6 +276,19 @@
       @media (prefers-reduced-motion: reduce) {
         *, *::before, *::after { transition: none !important; animation: none !important; }
       }
+      /* ---------- 导入预览 ---------- */
+      .import-overlay { position: fixed; inset: 0; z-index: 85; background: var(--bg); overflow-y: auto; padding: 16px 14px calc(24px + env(safe-area-inset-bottom)); }
+      .import-panel { max-width: 620px; margin: 0 auto; }
+      .import-panel h2 { margin: 0 0 6px; font-size: 21px; }
+      .import-panel .sub { color: var(--ink-soft); font-size: 14.5px; margin: 0 0 12px; }
+      .import-list { display: flex; flex-direction: column; gap: 8px; margin: 10px 0; }
+      .import-item { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; font-size: 14.5px; box-shadow: var(--shadow); }
+      .import-item.conflict { border-color: var(--hint); background: var(--hint-bg); }
+      .import-item .en { font-family: var(--font-en); font-weight: 700; }
+      .import-warn { background: var(--no-bg); color: var(--no); border-radius: 12px; padding: 12px 14px; font-size: 14.5px; font-weight: 600; margin: 12px 0; }
+      .import-actions { display: flex; flex-direction: column; gap: 8px; margin-top: 14px; }
+      .import-actions .page-btn, .import-actions .tool-btn { width: 100%; }
+      .import-actions .danger { background: var(--no-bg); color: var(--no); border-color: var(--no); }
       @keyframes cardIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
       .chapter.active .card { animation: cardIn 0.35s ease both; }
       .chapter.active .card:nth-child(2) { animation-delay: 0.04s; }
@@ -477,6 +490,24 @@
       </div>
     </div>
 
+    <div class="import-overlay" id="importOverlay" hidden>
+      <div class="import-panel" role="dialog" aria-label="导入预览">
+        <h2>导入预览（先看清楚，再决定）</h2>
+        <p class="sub" id="importPreviewSummary"></p>
+        <h3 style="margin:14px 0 4px;font-size:16px">会变化的句子</h3>
+        <div class="import-list" id="importChangeList"></div>
+        <h3 style="margin:14px 0 4px;font-size:16px">冲突项（导入和现有记录不一样）</h3>
+        <div class="import-list" id="importConflictList"></div>
+        <div class="import-warn">「用导入覆盖」会用导入文件替换冲突句子的现有记录，可能让已学过的句子倒退。覆盖前请先导出当前进度备份留底。</div>
+        <div class="import-actions">
+          <button class="page-btn" id="btnMergeImport" type="button">合并导入（保留更先进的记录）</button>
+          <button class="tool-btn" id="btnExportBeforeOverwrite" type="button">先导出当前进度备份</button>
+          <button class="tool-btn danger" id="btnOverwriteImport" type="button">用导入覆盖（我已确认）</button>
+          <button class="tool-btn" id="btnCancelImport" type="button">取消导入</button>
+        </div>
+      </div>
+    </div>
+
     <script>
       (function () {
         "use strict";
@@ -577,7 +608,17 @@
           return s;
         }
         var toastTimer = null;
-        function saveState(showToast) {
+        function showToast(text) {
+          var toast = document.getElementById("saveToast");
+          toast.textContent = text;
+          toast.classList.add("show");
+          if (toastTimer) clearTimeout(toastTimer);
+          toastTimer = setTimeout(function () {
+            toast.classList.remove("show");
+            toast.textContent = "已保存 ✓";
+          }, 1800);
+        }
+        function saveState(showToastFlag) {
           try {
             localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
           } catch (e) {
@@ -585,32 +626,44 @@
             setBackupMsg("本机保存失败，进度只在本次打开有效，建议导出一份文件备份。", false);
             return;
           }
-          if (showToast) {
-            var toast = document.getElementById("saveToast");
-            toast.classList.add("show");
-            if (toastTimer) clearTimeout(toastTimer);
-            toastTimer = setTimeout(function () { toast.classList.remove("show"); }, 1400);
-          }
+          if (showToastFlag) showToast("已保存 ✓");
         }
 
         /* ================= 评分与复习排期 ================= */
+        function intervalForStreak(streak) {
+          return streak <= 1 ? 4 : (streak === 2 ? 8 : 16);
+        }
         function rateCard(id, status) {
-          var prev = state.cards[id] || { status: "new", streak: 0, last_review: null, next_review: null };
+          var prev = state.cards[id] || { status: "new", streak: 0, interval: 0, last_review: null, next_review: null };
           var today = todayStr();
+          var card = CARD_BY_ID[id];
+          // 重复评分保护：已经是「能独立说出」且还没到下次复习日期时，
+          // 再次点「能独立说出」不升级、不延长日期（同一天重复点尤其如此）。
+          if (status === "independent" && prev.status === "independent" && prev.next_review && today < prev.next_review) {
+            if (card) state.position = { chapter: card.chapterIndex, cardId: id };
+            saveState(false);
+            refreshCard(id);
+            refreshHeader();
+            refreshChapterProgress();
+            showToast(prev.last_review === today ? "今天已评过" : "还没到复习日，今天已评过，不重复升级");
+            // statusLineText 已包含「今天已评过」
+            return;
+          }
           var streak = 0, interval = 1;
           if (status === "unknown") { streak = 0; interval = 1; }
-          else if (status === "hint") { streak = 0; interval = 2; }
+          else if (status === "hint") { streak = prev.streak || 0; interval = 2; }
           else if (status === "independent") {
-            streak = (prev.status === "independent") ? (prev.streak || 1) + 1 : 1;
-            interval = streak <= 1 ? 4 : (streak === 2 ? 8 : 16);
+            streak = (prev.streak || 0) + 1;
+            interval = intervalForStreak(streak);
           }
           state.cards[id] = {
             status: status,
             streak: streak,
+            interval: interval,
+            interval_days: interval,
             last_review: today,
             next_review: addDays(today, interval)
           };
-          var card = CARD_BY_ID[id];
           if (card) state.position = { chapter: card.chapterIndex, cardId: id };
           saveState(true);
           refreshCard(id);
@@ -650,11 +703,38 @@
           var r = state.cards[id];
           if (!r || !r.status || r.status === "new") return "还没评分 — 学完点下面一档";
           var s = "上次：" + "<b>" + STATUS_ZH[r.status] + "</b>";
+          if (r.streak) s += " · 连续 " + r.streak + " 次";
+          if (r.last_review === todayStr()) s += " · <b>今天已评过</b>";
           if (r.next_review) {
             if (r.next_review <= todayStr()) s += " · <b>今天该复习了</b>";
             else s += " · 下次复习：" + prettyDate(r.next_review);
           }
           return s;
+        }
+        function intervalOf(r, fallbackStatus) {
+          if (!r) return 0;
+          if (r.interval != null) return Number(r.interval) || 0;
+          if (r.interval_days != null) return Number(r.interval_days) || 0;
+          var st = r.status || fallbackStatus || "new";
+          if (st === "unknown") return 1;
+          if (st === "hint") return 2;
+          if (st === "independent") return intervalForStreak(r.streak || 1);
+          return 0;
+        }
+        function cardIndexInChapter(card) {
+          return CHAPTERS[card.chapterIndex].cards.indexOf(card);
+        }
+        function positionExport() {
+          var pos = state.position || { chapter: 0, cardId: null };
+          var c = pos.cardId ? CARD_BY_ID[pos.cardId] : null;
+          var idx = c ? cardIndexInChapter(c) : -1;
+          return {
+            chapter: pos.chapter != null ? pos.chapter : 0,
+            chapterNumber: (pos.chapter != null ? pos.chapter : 0) + 1,
+            cardId: pos.cardId || null,
+            cardIndex: idx,
+            cardNumber: idx >= 0 ? idx + 1 : null
+          };
         }
 
         function buildCard(card) {
@@ -1055,11 +1135,20 @@
           });
           var totalIndep = chapterData.reduce(function (a, c) { return a + c.independent; }, 0);
           var cards = ALL_CARDS.map(function (c) {
-            var r = state.cards[c.id] || { status: "new", streak: 0, last_review: null, next_review: null };
+            var r = state.cards[c.id] || { status: "new", streak: 0, interval: 0, last_review: null, next_review: null };
+            var st = r.status || "new";
+            var iv = intervalOf(r, st);
             return {
               id: c.id, en: c.en, zh: c.zh,
-              status: r.status || "new",
-              status_zh: STATUS_ZH[r.status || "new"],
+              chapter: c.chapterIndex,
+              chapterNumber: c.chapterIndex + 1,
+              cardIndex: cardIndexInChapter(c),
+              cardNumber: cardIndexInChapter(c) + 1,
+              status: st,
+              status_zh: STATUS_ZH[st],
+              streak: r.streak != null ? Number(r.streak) || 0 : 0,
+              interval: iv,
+              interval_days: iv,
               last_review: r.last_review || null,
               next_review: r.next_review || null
             };
@@ -1073,7 +1162,8 @@
                      ", 合计能独立说出: " + totalIndep + "/22",
             chapters: chapterData,
             total: { independent: totalIndep, total: 22 },
-            position: state.position,
+            position: positionExport(),
+            lastPosition: positionExport(),
             cards: cards
           };
         }
@@ -1109,74 +1199,216 @@
             return;
           }
           try {
-            importData(JSON.parse(ta.value));
+            showImportPreview(JSON.parse(ta.value));
             document.getElementById("pasteTip").hidden = true;
           } catch (e) {
             setBackupMsg("导入失败：框里的内容读不出来，请确认粘贴的是完整的进度文字。", false);
           }
         });
 
-        /* ================= 导入（兼容旧版 + 新版） ================= */
-        function applyImportedCards(map, note) {
-          // map: id -> { status, streak, last_review, next_review }
-          var count = 0;
-          Object.keys(map).forEach(function (id) {
-            if (CARD_BY_ID[id]) { state.cards[id] = map[id]; count++; }
-          });
-          // 导入后位置：第一句还没到“能独立说出”的句子
-          var next = ALL_CARDS.filter(function (c) {
-            var r = state.cards[c.id];
-            return !r || r.status !== "independent";
-          })[0] || ALL_CARDS[ALL_CARDS.length - 1];
-          state.position = { chapter: next.chapterIndex, cardId: next.id };
-          state.imported = true;
-          saveState(true);
-          refreshAllCards(); refreshHeader(); refreshChapterProgress();
-          goChapter(next.chapterIndex);
-          var s1 = chapterStats(0), s2 = chapterStats(1);
-          setBackupMsg("导入成功" + (note ? "（" + note + "）" : "") + "：第1章 能独立说出 " + s1.indep + "/" + s1.total +
-            " · 第2章 " + s2.indep + "/" + s2.total + " · 合计 " + (s1.indep + s2.indep) + "/22，已保存到本机，关闭重开也会恢复。", true);
-          return count;
+        /* ================= 导入（兼容旧版 + 新版，先预览再合并/覆盖） ================= */
+        var STATUS_RANK = { "new": 0, "unknown": 1, "hint": 2, "independent": 3 };
+        var pendingImport = null;
+
+        function normalizeImportedPosition(pos) {
+          if (!pos || typeof pos !== "object") return null;
+          var cardId = pos.cardId || null;
+          var chapter = pos.chapter;
+          if (chapter == null && pos.chapterNumber != null) chapter = Number(pos.chapterNumber) - 1;
+          if (cardId && CARD_BY_ID[cardId]) {
+            // 以 cardId 为准精确恢复，不重新计算
+            return { chapter: CARD_BY_ID[cardId].chapterIndex, cardId: cardId };
+          }
+          if (chapter != null && pos.cardIndex != null) {
+            var ch = CHAPTERS[Number(chapter)];
+            if (ch && ch.cards[Number(pos.cardIndex)]) {
+              var cc = ch.cards[Number(pos.cardIndex)];
+              return { chapter: cc.chapterIndex, cardId: cc.id };
+            }
+          }
+          if (chapter != null && CHAPTERS[Number(chapter)]) {
+            return { chapter: Number(chapter), cardId: cardId };
+          }
+          return null;
         }
-        function importData(data) {
+        function parseImportData(data) {
           if (!data || typeof data !== "object") throw new Error("bad");
           var map = {};
+          var position = normalizeImportedPosition(data.position || data.lastPosition);
           if (data.schema_version === 2 && (Array.isArray(data.cards) || (data.cards && typeof data.cards === "object"))) {
             var list = Array.isArray(data.cards) ? data.cards : Object.keys(data.cards).map(function (k) {
-              var v = data.cards[k]; v.id = k; return v;
+              var v = Object.assign({}, data.cards[k]); v.id = k; return v;
             });
             list.forEach(function (c) {
-              if (!c || !c.id) return;
-              var st = ["unknown", "hint", "independent"].indexOf(c.status) >= 0 ? c.status : "new";
+              if (!c || !c.id || !CARD_BY_ID[c.id]) return;
+              var st = ["unknown", "hint", "independent", "new"].indexOf(c.status) >= 0 ? c.status : "new";
+              var ivRaw = c.interval != null ? c.interval : c.interval_days;
+              var streak = c.streak != null ? Number(c.streak) || 0 : (st === "independent" ? 1 : 0);
+              var iv = ivRaw != null ? Number(ivRaw) || 0 : (st === "new" ? 0 : st === "unknown" ? 1 : st === "hint" ? 2 : intervalForStreak(streak || 1));
               map[c.id] = {
                 status: st,
-                streak: c.streak ? Number(c.streak) : (st === "independent" ? 1 : 0),
+                streak: streak,
+                interval: iv,
+                interval_days: iv,
                 last_review: c.last_review || null,
-                next_review: c.next_review || (st === "new" ? null : addDays(todayStr(), st === "unknown" ? 1 : st === "hint" ? 2 : 4))
+                next_review: c.next_review || (st === "new" ? null : (c.last_review ? addDays(c.last_review, iv || 1) : addDays(todayStr(), iv || 1)))
               };
+              // 若导入文件明确给出 next_review / last_review 则上面已原样保留（next_review 优先用文件值）
+              if (c.next_review) map[c.id].next_review = c.next_review;
+              if (c.last_review) map[c.id].last_review = c.last_review;
             });
-            if (data.position) state.position = data.position;
-            return applyImportedCards(map, "新版进度");
+            return { map: map, position: position, note: "新版进度" };
           }
-          // 旧版格式：knownIds（顶层或每章）
           var known = [];
           if (Array.isArray(data.knownIds)) known = known.concat(data.knownIds);
           if (Array.isArray(data.chapters)) data.chapters.forEach(function (ch) {
             if (ch && Array.isArray(ch.knownIds)) known = known.concat(ch.knownIds);
+            // 新版导出里 chapters 不含 knownIds，但 cards 已在上面处理；旧版每章可能只有计数，此时若有 cards 也已处理
+            if (ch && Array.isArray(ch.cards)) ch.cards.forEach(function (cc) { if (cc && cc.status === "independent" && cc.id) known.push(cc.id); });
           });
-          if (known.length || Array.isArray(data.knownIds) || Array.isArray(data.chapters)) {
+          // 旧版顶层 cards 若是「会了」列表风格也兼容：status 缺失但 known 标记
+          if (known.length || Array.isArray(data.knownIds) || (Array.isArray(data.chapters) && data.chapters.some(function (ch) { return ch && Array.isArray(ch.knownIds); }))) {
             var baseDate = todayStr();
             if (data.exportedAt) {
               var d = new Date(data.exportedAt);
               if (!isNaN(d.getTime())) baseDate = fmtDate(d);
             }
+            // 旧文件里没出现的句子，在合并时视为「还没学」参与预览（用于显示 9/22），覆盖时才按文件还原
+            ALL_CARDS.forEach(function (c) { map[c.id] = { status: "new", streak: 0, interval: 0, interval_days: 0, last_review: null, next_review: null }; });
             known.forEach(function (id) {
-              map[id] = { status: "independent", streak: 1, last_review: baseDate, next_review: addDays(baseDate, 4) };
+              if (CARD_BY_ID[id]) map[id] = { status: "independent", streak: 1, interval: 4, interval_days: 4, last_review: baseDate, next_review: addDays(baseDate, 4) };
             });
-            return applyImportedCards(map, "旧版「我会了」已转为「能独立说出」");
+            return { map: map, position: position, note: "旧版「我会了」已转为「能独立说出」", isLegacy: true };
           }
           throw new Error("unknown format");
         }
+        function recordsEqual(a, b) {
+          if (!a && !b) return true;
+          if (!a || !b) return false;
+          return (a.status || "new") === (b.status || "new") && (a.streak || 0) === (b.streak || 0) &&
+            (a.last_review || null) === (b.last_review || null) && (a.next_review || null) === (b.next_review || null);
+        }
+        function existingMoreAdvanced(cur, imp) {
+          if (!cur || !cur.status || cur.status === "new") return false;
+          if (!imp || imp.status === "new") return true; // 绝不把已学的倒退为还没学
+          if ((STATUS_RANK[cur.status] || 0) > (STATUS_RANK[imp.status] || 0)) return true;
+          if (cur.last_review && imp.last_review && cur.last_review > imp.last_review) return true;
+          if (cur.last_review && !imp.last_review) return true;
+          return false;
+        }
+        function describeRecord(r) {
+          if (!r || !r.status || r.status === "new") return "还没学";
+          return STATUS_ZH[r.status] + " · 连续 " + (r.streak || 0) + " 次 · 上次 " + (r.last_review || "—") + " · 下次 " + (r.next_review || "—");
+        }
+        function showImportPreview(data) {
+          var parsed = parseImportData(data);
+          var changes = [], conflicts = [];
+          Object.keys(parsed.map).forEach(function (id) {
+            var cur = state.cards[id] || { status: "new", streak: 0, last_review: null, next_review: null };
+            var imp = parsed.map[id];
+            if (recordsEqual(cur, imp)) return;
+            var entry = { id: id, cur: cur, imp: imp, conflict: false };
+            // 冲突：两边都有记录且不一致，或导入会让现有倒退
+            if ((cur.status && cur.status !== "new") && !recordsEqual(cur, imp)) { entry.conflict = true; conflicts.push(entry); }
+            else { changes.push(entry); }
+          });
+          pendingImport = { parsed: parsed, changes: changes, conflicts: conflicts };
+          var overlay = document.getElementById("importOverlay");
+          document.getElementById("importPreviewSummary").textContent =
+            "来源：" + parsed.note + "。导入文件共 " + Object.keys(parsed.map).length + " 句记录；会变化 " +
+            (changes.length + conflicts.length) + " 句，其中冲突 " + conflicts.length + " 句。" +
+            (parsed.position ? " 导入位置：第" + (parsed.position.chapter + 1) + "章" + (parsed.position.cardId ? " · " + CARD_BY_ID[parsed.position.cardId].en : "") + "（确认导入后原样恢复，不重新计算）。" : " 导入文件没有位置信息，位置保持或按旧规则处理。") +
+            " 默认点「合并导入」会保留更先进的现有记录，绝不倒退。";
+          function renderList(elId, list, emptyText) {
+            var box = document.getElementById(elId);
+            box.innerHTML = "";
+            if (!list.length) { var d = document.createElement("div"); d.className = "import-item"; d.textContent = emptyText; box.appendChild(d); return; }
+            list.forEach(function (e) {
+              var c = CARD_BY_ID[e.id];
+              var d2 = document.createElement("div");
+              d2.className = "import-item" + (e.conflict ? " conflict" : "");
+              d2.innerHTML = "";
+              var title = document.createElement("div");
+              title.innerHTML = "<span class='en'></span> · 现有：<span class='cur'></span><br>导入：<span class='imp'></span>";
+              title.querySelector(".en").textContent = (c ? c.en : e.id);
+              title.querySelector(".cur").textContent = describeRecord(e.cur);
+              title.querySelector(".imp").textContent = describeRecord(e.imp);
+              if (e.conflict && existingMoreAdvanced(e.cur, e.imp)) {
+                var note = document.createElement("div");
+                note.textContent = "现有记录更先进，合并时默认保留现有记录。";
+                note.style.fontWeight = "700";
+                title.appendChild(note);
+              }
+              d2.appendChild(title);
+              box.appendChild(d2);
+            });
+          }
+          renderList("importChangeList", changes, "没有会变化的句子。");
+          renderList("importConflictList", conflicts, "没有冲突项。");
+          overlay.hidden = false;
+          document.body.style.overflow = "hidden";
+        }
+        function closeImportPreview() {
+          document.getElementById("importOverlay").hidden = true;
+          document.body.style.overflow = "";
+          pendingImport = null;
+        }
+        function finishImport(mode) {
+          if (!pendingImport) return;
+          var parsed = pendingImport.parsed;
+          var applied = 0, kept = 0;
+          Object.keys(parsed.map).forEach(function (id) {
+            if (!CARD_BY_ID[id]) return;
+            var cur = state.cards[id];
+            var imp = parsed.map[id];
+            if (recordsEqual(cur, imp)) return;
+            if (mode === "merge") {
+              if (!cur && (!imp.status || imp.status === "new")) return;
+              if (cur && existingMoreAdvanced(cur, imp)) { kept++; return; }
+              // 合并时：导入为 new 且现有已学，绝不倒退
+              if (imp.status === "new" && cur && cur.status && cur.status !== "new") { kept++; return; }
+              state.cards[id] = imp; applied++;
+            } else { // overwrite，用户已在预览里明确确认
+              if (imp.status === "new") { delete state.cards[id]; }
+              else { state.cards[id] = imp; }
+              applied++;
+            }
+          });
+          // 位置：原样恢复导入文件的位置，不重新计算；文件没有位置时，
+          // 合并保持当前位置，覆盖（旧文件）才落到第一句未独立的句子
+          if (parsed.position) {
+            state.position = { chapter: parsed.position.chapter, cardId: parsed.position.cardId };
+          } else if (mode === "overwrite") {
+            var next = ALL_CARDS.filter(function (c) {
+              var r = state.cards[c.id];
+              return !r || r.status !== "independent";
+            })[0] || ALL_CARDS[ALL_CARDS.length - 1];
+            state.position = { chapter: next.chapterIndex, cardId: next.id };
+          }
+          state.imported = true;
+          saveState(true);
+          refreshAllCards(); refreshHeader(); refreshChapterProgress();
+          var targetChapter = state.position && state.position.chapter != null ? state.position.chapter : 0;
+          var targetCard = state.position && state.position.cardId;
+          closeImportPreview();
+          goChapter(targetChapter, targetCard);
+          var s1 = chapterStats(0), s2 = chapterStats(1);
+          setBackupMsg((mode === "merge" ? "合并导入成功" : "已用导入覆盖") + "（" + parsed.note + "）：第1章 能独立说出 " + s1.indep + "/" + s1.total +
+            " · 第2章 " + s2.indep + "/" + s2.total + " · 合计 " + (s1.indep + s2.indep) + "/22" +
+            (mode === "merge" && kept ? " · 保留了 " + kept + " 句更先进的现有记录" : "") +
+            "，已保存到本机，关闭重开也会恢复。", true);
+        }
+        document.getElementById("btnMergeImport").addEventListener("click", function () { finishImport("merge"); });
+        document.getElementById("btnCancelImport").addEventListener("click", function () { closeImportPreview(); setBackupMsg("已取消导入，现有进度没有变化。", true); });
+        document.getElementById("btnExportBeforeOverwrite").addEventListener("click", function () {
+          document.getElementById("btnExport").click();
+          showToast("已导出当前备份，再点「用导入覆盖」");
+        });
+        document.getElementById("btnOverwriteImport").addEventListener("click", function () {
+          // 覆盖前明确提示先备份（预览里已常驻提示，按钮区也有导出备份按钮）
+          setBackupMsg("正在用导入覆盖：如还没备份，请先点预览里的「先导出当前进度备份」。", false);
+          finishImport("overwrite");
+        });
         var importFile = document.getElementById("importFile");
         function triggerImport() { importFile.click(); }
         document.getElementById("btnImport").addEventListener("click", triggerImport);
@@ -1188,7 +1420,7 @@
           reader.onload = function () {
             try {
               var data = JSON.parse(String(reader.result));
-              importData(data);
+              showImportPreview(data);
             } catch (e) {
               setBackupMsg("导入失败：这个文件读不出来，请确认选的是 english-progress.json。", false);
             }
