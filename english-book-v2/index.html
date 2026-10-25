@@ -583,7 +583,7 @@
         function defaultState() {
           return {
             schema_version: 2,
-            cards: {},           // id -> { status, streak, last_review, next_review }
+            cards: {},           // id -> { status, streak, last_review, next_review, counted_review_date }
             position: { chapter: 0, cardId: null },
             settings: { zhHint: true, selfTest: false, noAnim: false, speed: 1 },
             tasks: {},           // taskId -> true
@@ -597,7 +597,14 @@
             if (raw) {
               var parsed = JSON.parse(raw);
               if (parsed && typeof parsed === "object") {
-                if (parsed.cards) s.cards = parsed.cards;
+                if (parsed.cards) {
+                  s.cards = parsed.cards;
+                  // 旧存档没有「当日已计复习日期」时，用最后复习日期补齐迁移（不重置、不清零）
+                  Object.keys(s.cards).forEach(function (cid) {
+                    var rec = s.cards[cid];
+                    if (rec && rec.counted_review_date == null && rec.last_review) rec.counted_review_date = rec.last_review;
+                  });
+                }
                 if (parsed.position) s.position = parsed.position;
                 if (parsed.settings) { for (var k in s.settings) if (parsed.settings[k] !== undefined) s.settings[k] = parsed.settings[k]; }
                 if (parsed.tasks) s.tasks = parsed.tasks;
@@ -633,20 +640,36 @@
         function intervalForStreak(streak) {
           return streak <= 1 ? 4 : (streak === 2 ? 8 : 16);
         }
+        // 「当日已计复习日期」counted_review_date：这张卡最近一次被计入复习排期的日期，
+        // 与 last_review（最后复习日期）分开保存。同日改评分只认这一天已计的那一次。
+        function countedOf(r) {
+          if (!r) return null;
+          return r.counted_review_date || r.last_review || null;
+        }
         function rateCard(id, status) {
-          var prev = state.cards[id] || { status: "new", streak: 0, interval: 0, last_review: null, next_review: null };
+          var prev = state.cards[id] || { status: "new", streak: 0, interval: 0, last_review: null, next_review: null, counted_review_date: null };
           var today = todayStr();
           var card = CARD_BY_ID[id];
-          // 重复评分保护：已经是「能独立说出」且还没到下次复习日期时，
-          // 再次点「能独立说出」不升级、不延长日期（同一天重复点尤其如此）。
-          if (status === "independent" && prev.status === "independent" && prev.next_review && today < prev.next_review) {
+          var countedDate = countedOf(prev);
+          function blocked(message) {
             if (card) state.position = { chapter: card.chapterIndex, cardId: id };
             saveState(false);
             refreshCard(id);
             refreshHeader();
             refreshChapterProgress();
-            showToast(prev.last_review === today ? "今天已评过" : "还没到复习日，今天已评过，不重复升级");
-            // statusLineText 已包含「今天已评过」
+            showToast(message);
+          }
+          // 同日计次保护：今天已经计过一次复习，这一天内再怎么改评分
+          // （能独立说出→需要提示→能独立说出，或任何其他顺序）都不算新一次复习：
+          // 不增加连续次数、不改间隔、不延长下次复习日期、不改已计状态，只提示「今天已评过」。
+          if (countedDate && countedDate === today) {
+            blocked("今天已评过");
+            return;
+          }
+          // 未到复习日保护：还没到下次复习日期时，再点「能独立说出」不提前升级；
+          // 只有到了或超过下次复习日期的那一天重新评分，才按 4天→8天→16天 升级。
+          if (status === "independent" && prev.status === "independent" && prev.next_review && today < prev.next_review) {
+            blocked("还没到复习日，不重复升级");
             return;
           }
           var streak = 0, interval = 1;
@@ -662,7 +685,8 @@
             interval: interval,
             interval_days: interval,
             last_review: today,
-            next_review: addDays(today, interval)
+            next_review: addDays(today, interval),
+            counted_review_date: today
           };
           if (card) state.position = { chapter: card.chapterIndex, cardId: id };
           saveState(true);
@@ -704,7 +728,7 @@
           if (!r || !r.status || r.status === "new") return "还没评分 — 学完点下面一档";
           var s = "上次：" + "<b>" + STATUS_ZH[r.status] + "</b>";
           if (r.streak) s += " · 连续 " + r.streak + " 次";
-          if (r.last_review === todayStr()) s += " · <b>今天已评过</b>";
+          if (countedOf(r) === todayStr()) s += " · <b>今天已评过</b>";
           if (r.next_review) {
             if (r.next_review <= todayStr()) s += " · <b>今天该复习了</b>";
             else s += " · 下次复习：" + prettyDate(r.next_review);
@@ -1150,7 +1174,8 @@
               interval: iv,
               interval_days: iv,
               last_review: r.last_review || null,
-              next_review: r.next_review || null
+              next_review: r.next_review || null,
+              counted_review_date: countedOf(r)
             };
           });
           return {
@@ -1251,11 +1276,13 @@
                 interval: iv,
                 interval_days: iv,
                 last_review: c.last_review || null,
-                next_review: c.next_review || (st === "new" ? null : (c.last_review ? addDays(c.last_review, iv || 1) : addDays(todayStr(), iv || 1)))
+                next_review: c.next_review || (st === "new" ? null : (c.last_review ? addDays(c.last_review, iv || 1) : addDays(todayStr(), iv || 1))),
+                counted_review_date: c.counted_review_date || c.last_review || null
               };
-              // 若导入文件明确给出 next_review / last_review 则上面已原样保留（next_review 优先用文件值）
+              // 若导入文件明确给出 next_review / last_review / counted_review_date 则原样保留，不重置
               if (c.next_review) map[c.id].next_review = c.next_review;
               if (c.last_review) map[c.id].last_review = c.last_review;
+              if (c.counted_review_date) map[c.id].counted_review_date = c.counted_review_date;
             });
             return { map: map, position: position, note: "新版进度" };
           }
@@ -1274,9 +1301,9 @@
               if (!isNaN(d.getTime())) baseDate = fmtDate(d);
             }
             // 旧文件里没出现的句子，在合并时视为「还没学」参与预览（用于显示 9/22），覆盖时才按文件还原
-            ALL_CARDS.forEach(function (c) { map[c.id] = { status: "new", streak: 0, interval: 0, interval_days: 0, last_review: null, next_review: null }; });
+            ALL_CARDS.forEach(function (c) { map[c.id] = { status: "new", streak: 0, interval: 0, interval_days: 0, last_review: null, next_review: null, counted_review_date: null }; });
             known.forEach(function (id) {
-              if (CARD_BY_ID[id]) map[id] = { status: "independent", streak: 1, interval: 4, interval_days: 4, last_review: baseDate, next_review: addDays(baseDate, 4) };
+              if (CARD_BY_ID[id]) map[id] = { status: "independent", streak: 1, interval: 4, interval_days: 4, last_review: baseDate, next_review: addDays(baseDate, 4), counted_review_date: baseDate };
             });
             return { map: map, position: position, note: "旧版「我会了」已转为「能独立说出」", isLegacy: true };
           }
@@ -1286,7 +1313,8 @@
           if (!a && !b) return true;
           if (!a || !b) return false;
           return (a.status || "new") === (b.status || "new") && (a.streak || 0) === (b.streak || 0) &&
-            (a.last_review || null) === (b.last_review || null) && (a.next_review || null) === (b.next_review || null);
+            (a.last_review || null) === (b.last_review || null) && (a.next_review || null) === (b.next_review || null) &&
+            countedOf(a) === countedOf(b);
         }
         function existingMoreAdvanced(cur, imp) {
           if (!cur || !cur.status || cur.status === "new") return false;
@@ -1298,7 +1326,7 @@
         }
         function describeRecord(r) {
           if (!r || !r.status || r.status === "new") return "还没学";
-          return STATUS_ZH[r.status] + " · 连续 " + (r.streak || 0) + " 次 · 上次 " + (r.last_review || "—") + " · 下次 " + (r.next_review || "—");
+          return STATUS_ZH[r.status] + " · 连续 " + (r.streak || 0) + " 次 · 上次 " + (r.last_review || "—") + " · 下次 " + (r.next_review || "—") + " · 计次日期 " + (countedOf(r) || "—");
         }
         function showImportPreview(data) {
           var parsed = parseImportData(data);
