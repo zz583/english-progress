@@ -1,0 +1,1222 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="color-scheme" content="light dark" />
+    <link rel="icon" href="data:," />
+    <title>英语课本升级版</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        --bg: #f4f7f4;
+        --surface: #ffffff;
+        --surface-2: #eef3ee;
+        --ink: #21302a;
+        --ink-soft: #5a6a61;
+        --ink-faint: #8a978e;
+        --line: #dce4dc;
+        --accent: #2e7d5b;
+        --accent-ink: #ffffff;
+        --accent-soft: #e0efe6;
+        --no: #b84a44;
+        --no-bg: #faeae8;
+        --hint: #9c6d1e;
+        --hint-bg: #faf0da;
+        --yes: #2e7d5b;
+        --yes-bg: #e0efe6;
+        --c-general: #5b7fa6;
+        --c-morning: #c07f2e;
+        --c-afternoon: #b85c38;
+        --c-evening: #5d6fa8;
+        --c-ask: #7a5fa0;
+        --c-answer: #2e7d5b;
+        --c-meet: #b04a72;
+        --c-intro: #3d7a86;
+        --shadow: 0 1px 3px rgba(33, 48, 42, 0.08), 0 4px 14px rgba(33, 48, 42, 0.05);
+        --font-ui: -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", sans-serif;
+        --font-en: Georgia, "Times New Roman", "Songti SC", "STSong", serif;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #121714;
+          --surface: #1d2420;
+          --surface-2: #262f29;
+          --ink: #e7efe9;
+          --ink-soft: #a7b5ab;
+          --ink-faint: #7d8b81;
+          --line: #333f37;
+          --accent: #4cb287;
+          --accent-ink: #0f1a14;
+          --accent-soft: #22352b;
+          --no: #e08a84;
+          --no-bg: #3d2725;
+          --hint: #ddb264;
+          --hint-bg: #3a3120;
+          --yes: #4cb287;
+          --yes-bg: #22352b;
+          --shadow: 0 1px 3px rgba(0, 0, 0, 0.35), 0 4px 14px rgba(0, 0, 0, 0.25);
+        }
+      }
+      * { box-sizing: border-box; }
+      html { -webkit-text-size-adjust: 100%; }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--ink);
+        font-family: var(--font-ui);
+        font-size: 16px;
+        line-height: 1.55;
+        padding-bottom: 92px;
+      }
+      button { font-family: inherit; cursor: pointer; }
+      button:focus-visible, [tabindex]:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; border-radius: 8px; }
+
+      /* ---------- 页眉 ---------- */
+      header.topbar {
+        position: sticky; top: 0; z-index: 40;
+        background: var(--bg);
+        border-bottom: 1px solid var(--line);
+        padding: 10px 14px 8px;
+      }
+      .head-actions { display: flex; gap: 8px; align-items: stretch; max-width: 760px; margin: 0 auto; }
+      .head-btn {
+        flex: 1 1 0; min-height: 52px; border-radius: 12px; border: 1px solid var(--line);
+        background: var(--surface); color: var(--ink);
+        font-size: 16px; font-weight: 700; padding: 6px 8px;
+        display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px;
+        box-shadow: var(--shadow);
+      }
+      .head-btn .sub { font-size: 12.5px; font-weight: 500; color: var(--ink-soft); }
+      .head-btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+      .head-btn.primary .sub { color: inherit; opacity: 0.85; }
+      .head-btn .due-num { font-size: 20px; line-height: 1.1; }
+      .head-settings {
+        max-width: 760px; margin: 8px auto 2px;
+        display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+      }
+      .set-btn {
+        min-height: 48px; border-radius: 999px; border: 1px solid var(--line);
+        background: var(--surface); color: var(--ink-soft);
+        font-size: 14.5px; font-weight: 600; padding: 6px 14px;
+      }
+      .set-btn[aria-pressed="true"] { background: var(--accent-soft); color: var(--accent); border-color: var(--accent); }
+      .speed-group { display: inline-flex; border: 1px solid var(--line); border-radius: 999px; overflow: hidden; background: var(--surface); }
+      .speed-group button {
+        min-height: 48px; min-width: 58px; border: 0; background: transparent; color: var(--ink-soft);
+        font-size: 14.5px; font-weight: 700; padding: 6px 10px;
+      }
+      .speed-group button.active { background: var(--accent); color: var(--accent-ink); }
+      .set-label { font-size: 13px; color: var(--ink-faint); }
+      #saveToast {
+        position: fixed; top: 12px; left: 50%; transform: translateX(-50%) translateY(-8px);
+        z-index: 90; background: var(--accent); color: var(--accent-ink);
+        font-size: 15px; font-weight: 700; padding: 9px 20px; border-radius: 999px;
+        opacity: 0; pointer-events: none; transition: opacity 0.25s ease, transform 0.25s ease;
+        box-shadow: var(--shadow);
+      }
+      #saveToast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+      main { max-width: 760px; margin: 0 auto; padding: 0 14px; }
+
+      .import-hint {
+        margin: 14px 0 0; background: var(--accent-soft); border: 1px solid var(--accent);
+        border-radius: 12px; padding: 12px 14px; font-size: 15px;
+      }
+      .import-hint b { color: var(--accent); }
+      .import-hint button {
+        margin-top: 8px; min-height: 48px; border-radius: 10px; border: 0;
+        background: var(--accent); color: var(--accent-ink); font-size: 15.5px; font-weight: 700; padding: 8px 18px;
+      }
+
+      /* ---------- 章节 ---------- */
+      .viewport { overflow: hidden; margin: 0 -14px; padding: 0 14px; }
+      .track { display: flex; transition: transform 0.38s cubic-bezier(0.25, 0.8, 0.3, 1); align-items: flex-start; }
+      .chapter { flex: 0 0 100%; min-width: 0; padding-top: 16px; }
+      .chapter-head .lesson-tag {
+        display: inline-block; font-size: 13px; font-weight: 700; color: var(--accent);
+        background: var(--accent-soft); border-radius: 999px; padding: 3px 12px; margin-bottom: 8px;
+      }
+      .chapter-head h2 { margin: 0 0 6px; font-size: 26px; line-height: 1.25; }
+      .chapter-head .lede { margin: 0; color: var(--ink-soft); font-size: 15px; }
+      .chapter-progress { margin-top: 10px; font-size: 14.5px; color: var(--ink-soft); }
+      .chapter-progress b { color: var(--accent); font-size: 16px; }
+      .progress-bar { height: 8px; border-radius: 999px; background: var(--surface-2); margin-top: 6px; overflow: hidden; }
+      .progress-bar i { display: block; height: 100%; background: var(--accent); border-radius: 999px; transition: width 0.4s ease; }
+
+      .chapter-tools { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 16px 0 4px; }
+      .tool-btn {
+        min-height: 48px; border-radius: 10px; border: 1px solid var(--line);
+        background: var(--surface); color: var(--ink); font-size: 15.5px; font-weight: 700; padding: 8px 18px;
+        box-shadow: var(--shadow);
+      }
+      .tool-btn.playing { background: var(--no-bg); color: var(--no); border-color: var(--no); }
+
+      /* ---------- 卡片 ---------- */
+      .grid { display: grid; grid-template-columns: 1fr; gap: 14px; margin-top: 12px; }
+      @media (min-width: 640px) { .grid { grid-template-columns: 1fr 1fr; } }
+      .card {
+        background: var(--surface); border: 1px solid var(--line); border-radius: 16px;
+        padding: 16px; box-shadow: var(--shadow);
+        transition: box-shadow 0.25s ease, border-color 0.25s ease;
+      }
+      .card.focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft), var(--shadow); }
+      .card .scene { font-size: 13px; font-weight: 700; margin-bottom: 8px; }
+      .card .en { font-family: var(--font-en); font-size: 27px; font-weight: 700; line-height: 1.3; overflow-wrap: break-word; }
+      .card .ipa { font-size: 16.5px; color: var(--ink-soft); margin-top: 3px; }
+      .card audio { width: 100%; margin-top: 12px; height: 44px; }
+      .card .zh { font-size: 18px; font-weight: 600; margin-top: 12px; cursor: pointer; min-height: 1.5em; }
+      .card .zh.hidden-zh { color: var(--ink-faint); font-weight: 500; font-size: 15px; }
+      body.selftest .card .en, body.selftest .card .ipa { display: none; }
+      body.selftest .card.revealed .en, body.selftest .card.revealed .ipa { display: block; }
+      body.selftest .card .zh { font-size: 24px; margin-top: 2px; }
+      body.selftest .card .selftest-tip { display: block; }
+      .card .selftest-tip { display: none; font-size: 13.5px; color: var(--ink-faint); margin-top: 6px; }
+      .rate-row { display: flex; gap: 8px; margin-top: 14px; }
+      .rate-btn {
+        flex: 1 1 0; min-height: 52px; border-radius: 12px; border: 2px solid var(--line);
+        background: var(--surface); font-size: 15.5px; font-weight: 700; padding: 6px 2px; color: var(--ink);
+        transition: transform 0.12s ease, background 0.15s ease, border-color 0.15s ease;
+      }
+      .rate-btn:active { transform: scale(0.96); }
+      .rate-btn.r-no { color: var(--no); }
+      .rate-btn.r-hint { color: var(--hint); }
+      .rate-btn.r-yes { color: var(--yes); }
+      .rate-btn.r-no.active { background: var(--no-bg); border-color: var(--no); }
+      .rate-btn.r-hint.active { background: var(--hint-bg); border-color: var(--hint); }
+      .rate-btn.r-yes.active { background: var(--yes-bg); border-color: var(--yes); }
+      .card .status-line { margin-top: 10px; font-size: 13.5px; color: var(--ink-faint); min-height: 1.4em; }
+      .card .status-line b { color: var(--ink-soft); }
+
+      /* ---------- 章节区块 ---------- */
+      .block { margin-top: 26px; }
+      .block h2 { font-size: 19px; margin: 0 0 10px; }
+      .dialogue, .practice {
+        background: var(--surface); border: 1px solid var(--line); border-radius: 16px;
+        padding: 14px 16px; box-shadow: var(--shadow);
+      }
+      .turn { display: flex; gap: 10px; padding: 7px 0; }
+      .turn + .turn { border-top: 1px dashed var(--line); }
+      .turn .who {
+        flex: 0 0 auto; width: 28px; height: 28px; border-radius: 50%;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 13px; font-weight: 800; background: var(--accent-soft); color: var(--accent);
+      }
+      .turn.b .who { background: var(--surface-2); color: var(--ink-soft); }
+      .turn .line-en { font-family: var(--font-en); font-size: 17.5px; font-weight: 700; }
+      .turn .line-zh { font-size: 13.5px; color: var(--ink-soft); }
+      .practice ol { margin: 0; padding-left: 22px; font-size: 15px; }
+      .practice li { margin: 6px 0; }
+      .practice .note { font-size: 13.5px; color: var(--ink-soft); margin: 10px 0 0; }
+      .task-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+      .task-item { display: flex; gap: 10px; align-items: flex-start; cursor: pointer; font-size: 15px; min-height: 32px; }
+      .task-check {
+        flex: 0 0 auto; width: 26px; height: 26px; border-radius: 8px; border: 2px solid var(--line);
+        display: flex; align-items: center; justify-content: center; color: transparent; font-size: 15px; margin-top: 1px;
+      }
+      .task-item.done .task-check { background: var(--yes); border-color: var(--yes); color: #fff; }
+      .task-item.done .task-text { color: var(--ink-soft); text-decoration: line-through; }
+
+      /* ---------- 底部翻页 ---------- */
+      nav.pager {
+        position: fixed; left: 0; right: 0; bottom: 0; z-index: 40;
+        background: var(--surface); border-top: 1px solid var(--line);
+        padding: 10px 14px calc(10px + env(safe-area-inset-bottom));
+        display: flex; align-items: center; gap: 10px;
+      }
+      .page-btn {
+        flex: 0 0 auto; min-height: 52px; min-width: 108px; border-radius: 12px; border: 1px solid var(--line);
+        background: var(--surface-2); color: var(--ink); font-size: 16px; font-weight: 700; padding: 8px 14px;
+      }
+      .page-btn:disabled { opacity: 0.4; }
+      .page-info { flex: 1 1 auto; text-align: center; min-width: 0; }
+      .page-info .page-pos { display: block; font-size: 13px; color: var(--ink-faint); }
+      .page-info .page-name { display: block; font-size: 15px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+      /* ---------- 备份区 ---------- */
+      .backup { margin-top: 30px; background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 16px; box-shadow: var(--shadow); }
+      .backup h2 { margin: 0 0 6px; font-size: 19px; }
+      .backup p { margin: 0 0 12px; font-size: 14.5px; color: var(--ink-soft); }
+      .backup .row { display: flex; flex-wrap: wrap; gap: 8px; }
+      .backup-msg { margin-top: 10px; font-size: 14.5px; min-height: 1.4em; }
+      .backup-msg.ok { color: var(--yes); font-weight: 700; }
+      .backup-msg.err { color: var(--no); font-weight: 700; }
+      #exportText {
+        width: 100%; margin-top: 10px; border: 1px solid var(--line); border-radius: 10px;
+        background: var(--surface-2); color: var(--ink-soft); font-size: 12.5px; padding: 10px;
+        font-family: ui-monospace, Menlo, Consolas, monospace; resize: vertical;
+      }
+      footer.end-note { margin: 22px 0 6px; font-size: 13px; color: var(--ink-faint); text-align: center; }
+
+      /* ---------- 复习 ---------- */
+      .review-overlay {
+        position: fixed; inset: 0; z-index: 80; background: var(--bg);
+        overflow-y: auto; padding: 16px 14px calc(24px + env(safe-area-inset-bottom));
+      }
+      .review-panel { max-width: 620px; margin: 0 auto; }
+      .review-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 14px; }
+      .review-counter { font-size: 16px; font-weight: 700; }
+      .review-card {
+        background: var(--surface); border: 1px solid var(--line); border-radius: 18px;
+        padding: 22px 18px; box-shadow: var(--shadow); text-align: center;
+      }
+      .review-card .scene { font-size: 13.5px; font-weight: 700; margin-bottom: 10px; }
+      .review-en { font-family: var(--font-en); font-size: 32px; font-weight: 700; line-height: 1.3; overflow-wrap: break-word; }
+      .review-ipa { font-size: 18px; color: var(--ink-soft); margin-top: 4px; }
+      .review-card audio { width: 100%; margin-top: 16px; height: 44px; }
+      .review-zh { font-size: 19px; font-weight: 600; min-height: 1.6em; padding-top: 14px; cursor: pointer; }
+      .review-zh.hidden-zh { color: var(--ink-faint); font-weight: 500; font-size: 15.5px; }
+      .review-msg { font-size: 20px; font-weight: 700; text-align: center; margin: 34px 0 6px; }
+      .review-msg-sub { font-size: 15px; color: var(--ink-soft); text-align: center; margin: 0 0 18px; }
+      .review-actions { display: flex; gap: 8px; margin-top: 16px; }
+      .review-actions .page-btn { flex: 1 1 0; }
+
+      /* ---------- 动效开关 ---------- */
+      body.no-anim *, body.no-anim *::before, body.no-anim *::after { transition: none !important; animation: none !important; }
+      @media (prefers-reduced-motion: reduce) {
+        *, *::before, *::after { transition: none !important; animation: none !important; }
+      }
+      @keyframes cardIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+      .chapter.active .card { animation: cardIn 0.35s ease both; }
+      .chapter.active .card:nth-child(2) { animation-delay: 0.04s; }
+      .chapter.active .card:nth-child(3) { animation-delay: 0.08s; }
+      .chapter.active .card:nth-child(4) { animation-delay: 0.12s; }
+    </style>
+  </head>
+  <body>
+    <div id="saveToast" role="status">已保存 ✓</div>
+
+    <header class="topbar">
+      <div class="head-actions">
+        <button class="head-btn primary" id="btnContinue" type="button">继续学习<span class="sub" id="continueSub">从上次位置接着学</span></button>
+        <button class="head-btn" id="btnDue" type="button"><span class="due-num" id="dueCount">0</span><span class="sub">今日复习（句）</span></button>
+        <button class="head-btn" id="btnToday" type="button"><span class="due-num" id="todayCount">0</span><span class="sub">今日完成（句）</span></button>
+      </div>
+      <div class="head-settings">
+        <button class="set-btn" id="toggleZh" type="button" aria-pressed="true">中文提示：开</button>
+        <button class="set-btn" id="toggleSelfTest" type="button" aria-pressed="false">自测模式（遮英文）</button>
+        <button class="set-btn" id="toggleAnim" type="button" aria-pressed="false">关动画</button>
+        <span class="set-label">语速</span>
+        <span class="speed-group" role="group" aria-label="语速">
+          <button type="button" data-speed="0.8">0.8× 慢</button>
+          <button type="button" data-speed="1" class="active">正常</button>
+        </span>
+      </div>
+    </header>
+
+    <main>
+      <div class="import-hint" id="importHint" hidden>
+        <b>第一次打开升级版？</b>点下面按钮，选旧页导出的 <b>english-progress.json</b>，之前的学习记录就会接上，一句都不会丢。
+        <br /><button type="button" id="hintImportBtn">导入旧进度</button>
+      </div>
+
+      <div class="viewport" id="viewport">
+        <div class="track" id="track">
+
+          <section class="chapter" id="chapter-1">
+            <div class="chapter-head">
+              <span class="lesson-tag">第 1 课</span>
+              <h2>打招呼与自我介绍</h2>
+              <p class="lede">见面先开口：打招呼、问好、介绍自己。先听音频跟读，再开自测模式遮住英文、只看中文自测，最后按真实感受点下面的三档按钮。</p>
+              <div class="chapter-progress" id="progress-1"></div>
+            </div>
+            <div class="chapter-tools">
+              <button class="tool-btn play-all-btn" type="button" data-chapter="0">连播本章</button>
+              <button class="tool-btn review-chapter-btn" type="button" data-chapter="0">复习本章</button>
+            </div>
+            <div class="grid" id="grid1"></div>
+
+            <section class="block">
+              <h2>连起来说：一小段对话</h2>
+              <div class="dialogue">
+                <div class="turn a"><span class="who">A</span><div><div class="line-en">Hello! How are you?</div><div class="line-zh">你好！你好吗？</div></div></div>
+                <div class="turn b"><span class="who">B</span><div><div class="line-en">I'm fine, thank you. And you?</div><div class="line-zh">我很好，谢谢。你呢？</div></div></div>
+                <div class="turn a"><span class="who">A</span><div><div class="line-en">I'm fine too. Nice to meet you.</div><div class="line-zh">我也很好。很高兴认识你。</div></div></div>
+                <div class="turn b"><span class="who">B</span><div><div class="line-en">Nice to meet you too.</div><div class="line-zh">我也很高兴认识你。</div></div></div>
+              </div>
+            </section>
+
+            <section class="block">
+              <h2>今天的练习</h2>
+              <div class="practice">
+                <ol>
+                  <li>9 张卡逐张过：看英文 → 对照音标 → 点播放跟读 3 遍，一定要读出声。</li>
+                  <li>开自测模式自测：只看中文，能自己说出英文的点「能独立说出」；要想一下的点「需要提示」。</li>
+                  <li>把自我介绍换成你自己：My name is Xunmeng. I am from China. 连说 3 遍。</li>
+                </ol>
+                <p class="note">小提醒：晚上见面打招呼说 Good evening；Good night 是睡觉前告别时才说的。Xunmeng 是拼音名，音频里按近似发音读，日常按中文拼音读就可以。</p>
+              </div>
+            </section>
+
+            <section class="block">
+              <h2>今天的小任务</h2>
+              <div class="practice">
+                <ul class="task-list" data-chapter-tasks="1">
+                  <li class="task-item" data-task="c1t0"><span class="task-check">✓</span><span class="task-text">对着自己大声说 3 次打招呼（Hello、Good morning、Good evening 换着说），说给自己听就可以，不用打分</span></li>
+                  <li class="task-item" data-task="c1t1"><span class="task-check">✓</span><span class="task-text">大声做一次自我介绍：My name is Xunmeng. I am from China.</span></li>
+                </ul>
+                <p class="note">做完一项点一下打勾，今天都做完就算过关。</p>
+              </div>
+            </section>
+          </section>
+
+          <section class="chapter" id="chapter-2" aria-hidden="true">
+            <div class="chapter-head">
+              <span class="lesson-tag">第 2 课</span>
+              <h2>数字和时间</h2>
+              <p class="lede">先把 1 到 10 数顺，再学会问时间和报时间——数数、买东西、约时间都离不开这 13 张卡。</p>
+              <div class="chapter-progress" id="progress-2"></div>
+            </div>
+            <div class="chapter-tools">
+              <button class="tool-btn play-all-btn" type="button" data-chapter="1">连播本章</button>
+              <button class="tool-btn review-chapter-btn" type="button" data-chapter="1">复习本章</button>
+            </div>
+            <div class="grid" id="grid2"></div>
+
+            <section class="block">
+              <h2>连起来说：一小段对话</h2>
+              <div class="dialogue">
+                <div class="turn a"><span class="who">A</span><div><div class="line-en">What time is it?</div><div class="line-zh">现在几点？</div></div></div>
+                <div class="turn b"><span class="who">B</span><div><div class="line-en">It's three o'clock.</div><div class="line-zh">现在三点。</div></div></div>
+                <div class="turn a"><span class="who">A</span><div><div class="line-en">And now?</div><div class="line-zh">那现在呢？</div></div></div>
+                <div class="turn b"><span class="who">B</span><div><div class="line-en">It's half past seven.</div><div class="line-zh">现在七点半。</div></div></div>
+              </div>
+            </section>
+
+            <section class="block">
+              <h2>今天的练习</h2>
+              <div class="practice">
+                <ol>
+                  <li>数字卡逐张过：看英文 → 对照音标 → 点播放跟读 3 遍，再从 One 一口气数到 Ten。</li>
+                  <li>开自测模式自测：只看中文，能自己说出英文的点「能独立说出」；要想一下的点「需要提示」。</li>
+                  <li>练问时间：先问 What time is it?，再看着时钟用 It's … o'clock. 回答；把 three 换成别的数字多练几遍。</li>
+                </ol>
+                <p class="note">小提醒：o'clock 只用在整点；「半点」说 half past，如七点半是 half past seven。Three 里的 th 是咬舌音，舌尖轻触上齿再发音。</p>
+              </div>
+            </section>
+
+            <section class="block">
+              <h2>今天的小任务</h2>
+              <div class="practice">
+                <ul class="task-list" data-chapter-tasks="2">
+                  <li class="task-item" data-task="c2t0"><span class="task-check">✓</span><span class="task-text">数一数身边的东西（杯子、手机、书包都行），用英语从 One 一口气数到 Ten</span></li>
+                  <li class="task-item" data-task="c2t1"><span class="task-check">✓</span><span class="task-text">用英语问一次时间 What time is it?，再看着表用 It's … o'clock. 自己回答，在心里说或者说出声都可以</span></li>
+                </ul>
+                <p class="note">做完一项点一下打勾，今天都做完就算过关。</p>
+              </div>
+            </section>
+          </section>
+
+        </div>
+      </div>
+
+      <section class="backup" aria-label="进度备份">
+        <h2>进度备份</h2>
+        <p>进度会自动保存在这台手机的浏览器里。换手机或想把记录发给 Muse 时，先导出一份文件存好；导入时选导出的文件就能恢复，旧版导出的文件也能直接导入。</p>
+        <div class="row">
+          <button class="tool-btn" id="btnExport" type="button">导出进度</button>
+          <button class="tool-btn" id="btnImport" type="button">导入文件</button>
+          <button class="tool-btn" id="btnPasteImport" type="button">粘贴导入</button>
+          <input type="file" id="importFile" accept=".json,application/json" hidden />
+        </div>
+        <div class="backup-msg" id="backupMsg" role="status"></div>
+        <textarea id="exportText" rows="4" hidden aria-label="进度内容：导出后显示在这里可以复制发送；也可以把进度文字粘贴到这里，再点粘贴导入"></textarea>
+        <p id="pasteTip" hidden style="margin-top:6px">把进度文字粘贴到上面框里，再点一次「粘贴导入」就会恢复。</p>
+      </section>
+
+      <footer class="end-note">共 2 章 · 22 句 · 点三档按钮后会自动安排下次复习时间</footer>
+    </main>
+
+    <nav class="pager" aria-label="章节翻页">
+      <button class="page-btn" id="prevBtn" type="button">← 上一章</button>
+      <div class="page-info">
+        <span class="page-pos" id="pagePos">第 1 章 / 共 2 章</span>
+        <span class="page-name" id="pageName">打招呼与自我介绍</span>
+      </div>
+      <button class="page-btn" id="nextBtn" type="button">下一章 →</button>
+    </nav>
+
+    <div class="review-overlay" id="reviewOverlay" hidden>
+      <div class="review-panel" role="dialog" aria-label="复习">
+        <div class="review-top">
+          <span class="review-counter" id="reviewCounter">复习</span>
+          <button class="tool-btn" id="reviewExit" type="button">退出复习</button>
+        </div>
+        <div id="reviewBody">
+          <div class="review-card">
+            <div class="scene" id="reviewScene"></div>
+            <div class="review-en" id="reviewEn"></div>
+            <div class="review-ipa" id="reviewIpa"></div>
+            <audio id="reviewAudio" controls preload="none"></audio>
+            <div class="review-zh hidden-zh" id="reviewZh">先听音频猜意思，点这里看中文</div>
+          </div>
+          <div class="rate-row" id="reviewRateRow">
+            <button class="rate-btn r-no" type="button" data-rate="unknown">不会</button>
+            <button class="rate-btn r-hint" type="button" data-rate="hint">需要提示</button>
+            <button class="rate-btn r-yes" type="button" data-rate="independent">能独立说出</button>
+          </div>
+          <div class="review-actions">
+            <button class="tool-btn" id="reviewReplay" type="button">再听一遍</button>
+            <button class="page-btn" id="reviewNext" type="button">先跳过</button>
+          </div>
+        </div>
+        <div id="reviewEmpty" hidden>
+          <p class="review-msg" id="reviewEmptyTitle">现在没有到期的句子</p>
+          <p class="review-msg-sub" id="reviewEmptySub">先去学几句、点三档按钮排好复习时间，到期了这里就会出现。</p>
+          <div class="review-actions">
+            <button class="page-btn" id="reviewEmptyExit" type="button">回去学习</button>
+          </div>
+        </div>
+        <div id="reviewDone" hidden>
+          <p class="review-msg">这一轮复习完了</p>
+          <p class="review-msg-sub">评分都已保存，下次复习时间也排好了。</p>
+          <div class="review-actions">
+            <button class="page-btn" id="reviewDoneExit" type="button">退出复习</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      (function () {
+        "use strict";
+
+        /* ================= 课程数据（与旧页完全一致，共 22 句） ================= */
+        var CHAPTERS = [
+          {
+            id: 1, name: "打招呼与自我介绍",
+            cards: [
+              { id: "c1-0", en: "Hello", ipa: "/həˈloʊ/", scene: "通用 · 见面就说", zh: "你好", color: "var(--c-general)", audio: "assets/hello.mp3" },
+              { id: "c1-1", en: "Hi", ipa: "/haɪ/", scene: "朋友 · 更随意", zh: "嗨", color: "var(--c-general)", audio: "assets/hi.mp3" },
+              { id: "c1-2", en: "Good morning", ipa: "/ˌɡʊd ˈmɔːrnɪŋ/", scene: "上午 · 太阳升起时", zh: "早上好", color: "var(--c-morning)", audio: "assets/good-morning.mp3" },
+              { id: "c1-3", en: "Good afternoon", ipa: "/ˌɡʊd ˌæftərˈnuːn/", scene: "下午 · 午后", zh: "下午好", color: "var(--c-afternoon)", audio: "assets/good-afternoon.mp3" },
+              { id: "c1-4", en: "Good evening", ipa: "/ˌɡʊd ˈiːvnɪŋ/", scene: "晚上 · 见面时说", zh: "晚上好", color: "var(--c-evening)", audio: "assets/good-evening.mp3" },
+              { id: "c1-5", en: "How are you?", ipa: "/haʊ ɑːr juː/", scene: "问候 · 问对方近况", zh: "你好吗？", color: "var(--c-ask)", audio: "assets/how-are-you.mp3" },
+              { id: "c1-6", en: "I'm fine, thank you. And you?", ipa: "/aɪm faɪn ˈθæŋk juː ənd juː/", scene: "回答 · 说自己很好，再回问对方", zh: "我很好，谢谢。你呢？", color: "var(--c-answer)", audio: "assets/im-fine.mp3" },
+              { id: "c1-7", en: "Nice to meet you", ipa: "/naɪs tə ˈmiːt juː/", scene: "初次见面 · 客气话", zh: "很高兴认识你", color: "var(--c-meet)", audio: "assets/nice-to-meet-you.mp3" },
+              { id: "c1-8", en: "My name is Xunmeng. I am from China.", ipa: "/maɪ neɪm ɪz …/ · /aɪ æm frʌm ˈtʃaɪnə/", scene: "自我介绍 · 名字按拼音读", zh: "我叫 Xunmeng，我来自中国", color: "var(--c-intro)", audio: "assets/my-name-is.mp3" }
+            ]
+          },
+          {
+            id: 2, name: "数字和时间",
+            cards: [
+              { id: "c2-0", en: "One", ipa: "/wʌn/", scene: "数字 · 数数、报数", zh: "一", color: "var(--c-general)", audio: "assets/lesson2-01-one.mp3" },
+              { id: "c2-1", en: "Two", ipa: "/tuː/", scene: "数字 · 数数、报数", zh: "二", color: "var(--c-morning)", audio: "assets/lesson2-02-two.mp3" },
+              { id: "c2-2", en: "Three", ipa: "/θriː/", scene: "数字 · th 是咬舌音", zh: "三", color: "var(--c-afternoon)", audio: "assets/lesson2-03-three.mp3" },
+              { id: "c2-3", en: "Four", ipa: "/fɔːr/", scene: "数字 · 数数、报数", zh: "四", color: "var(--c-evening)", audio: "assets/lesson2-04-four.mp3" },
+              { id: "c2-4", en: "Five", ipa: "/faɪv/", scene: "数字 · 数数、报数", zh: "五", color: "var(--c-ask)", audio: "assets/lesson2-05-five.mp3" },
+              { id: "c2-5", en: "Six", ipa: "/sɪks/", scene: "数字 · 结尾 ks 连读", zh: "六", color: "var(--c-meet)", audio: "assets/lesson2-06-six.mp3" },
+              { id: "c2-6", en: "Seven", ipa: "/ˈsev.ən/", scene: "数字 · 两个音节", zh: "七", color: "var(--c-intro)", audio: "assets/lesson2-07-seven.mp3" },
+              { id: "c2-7", en: "Eight", ipa: "/eɪt/", scene: "数字 · 结尾 t 收住", zh: "八", color: "var(--c-general)", audio: "assets/lesson2-08-eight.mp3" },
+              { id: "c2-8", en: "Nine", ipa: "/naɪn/", scene: "数字 · 数数、报数", zh: "九", color: "var(--c-morning)", audio: "assets/lesson2-09-nine.mp3" },
+              { id: "c2-9", en: "Ten", ipa: "/ten/", scene: "数字 · 数数、报数", zh: "十", color: "var(--c-afternoon)", audio: "assets/lesson2-10-ten.mp3" },
+              { id: "c2-10", en: "What time is it?", ipa: "/wʌt taɪm ɪz ɪt/", scene: "问时间 · 想知道现在几点", zh: "现在几点？", color: "var(--c-ask)", audio: "assets/lesson2-11-whattime.mp3" },
+              { id: "c2-11", en: "It's three o'clock.", ipa: "/ɪts θriː əˈklɑːk/", scene: "报时间 · 整点这样说", zh: "现在三点。", color: "var(--c-evening)", audio: "assets/lesson2-12-threeoclock.mp3" },
+              { id: "c2-12", en: "It's half past seven.", ipa: "/ɪts hæf pæst ˈsev.ən/", scene: "报时间 · 半点这样说", zh: "现在七点半。", color: "var(--c-meet)", audio: "assets/lesson2-13-halfpastseven.mp3" }
+            ]
+          }
+        ];
+        var ALL_CARDS = [];
+        CHAPTERS.forEach(function (ch, ci) {
+          ch.cards.forEach(function (c) { c.chapterIndex = ci; ALL_CARDS.push(c); });
+        });
+        var CARD_BY_ID = {};
+        ALL_CARDS.forEach(function (c) { CARD_BY_ID[c.id] = c; });
+
+        var STATUS_ZH = { "new": "还没学", "unknown": "不会", "hint": "需要提示", "independent": "能独立说出" };
+
+        /* ================= 日期工具（按本地日期） ================= */
+        function fmtDate(d) {
+          var m = String(d.getMonth() + 1).padStart(2, "0");
+          var day = String(d.getDate()).padStart(2, "0");
+          return d.getFullYear() + "-" + m + "-" + day;
+        }
+        function todayStr() { return fmtDate(new Date()); }
+        function addDays(dateStr, n) {
+          var parts = dateStr.split("-");
+          var d = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+          d.setDate(d.getDate() + n);
+          return fmtDate(d);
+        }
+        function prettyDate(dateStr) {
+          if (!dateStr) return "";
+          var parts = dateStr.split("-");
+          return Number(parts[1]) + "月" + Number(parts[2]) + "日";
+        }
+
+        /* ================= 状态与本地保存 ================= */
+        var STORAGE_KEY = "english-book-v2";
+        var storageOK = true;
+        var state = null;
+
+        function defaultState() {
+          return {
+            schema_version: 2,
+            cards: {},           // id -> { status, streak, last_review, next_review }
+            position: { chapter: 0, cardId: null },
+            settings: { zhHint: true, selfTest: false, noAnim: false, speed: 1 },
+            tasks: {},           // taskId -> true
+            imported: false
+          };
+        }
+        function loadState() {
+          var s = defaultState();
+          try {
+            var raw = localStorage.getItem(STORAGE_KEY);
+            if (raw) {
+              var parsed = JSON.parse(raw);
+              if (parsed && typeof parsed === "object") {
+                if (parsed.cards) s.cards = parsed.cards;
+                if (parsed.position) s.position = parsed.position;
+                if (parsed.settings) { for (var k in s.settings) if (parsed.settings[k] !== undefined) s.settings[k] = parsed.settings[k]; }
+                if (parsed.tasks) s.tasks = parsed.tasks;
+                if (parsed.imported) s.imported = true;
+              }
+            }
+          } catch (e) { storageOK = false; }
+          return s;
+        }
+        var toastTimer = null;
+        function saveState(showToast) {
+          try {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+          } catch (e) {
+            storageOK = false;
+            setBackupMsg("本机保存失败，进度只在本次打开有效，建议导出一份文件备份。", false);
+            return;
+          }
+          if (showToast) {
+            var toast = document.getElementById("saveToast");
+            toast.classList.add("show");
+            if (toastTimer) clearTimeout(toastTimer);
+            toastTimer = setTimeout(function () { toast.classList.remove("show"); }, 1400);
+          }
+        }
+
+        /* ================= 评分与复习排期 ================= */
+        function rateCard(id, status) {
+          var prev = state.cards[id] || { status: "new", streak: 0, last_review: null, next_review: null };
+          var today = todayStr();
+          var streak = 0, interval = 1;
+          if (status === "unknown") { streak = 0; interval = 1; }
+          else if (status === "hint") { streak = 0; interval = 2; }
+          else if (status === "independent") {
+            streak = (prev.status === "independent") ? (prev.streak || 1) + 1 : 1;
+            interval = streak <= 1 ? 4 : (streak === 2 ? 8 : 16);
+          }
+          state.cards[id] = {
+            status: status,
+            streak: streak,
+            last_review: today,
+            next_review: addDays(today, interval)
+          };
+          var card = CARD_BY_ID[id];
+          if (card) state.position = { chapter: card.chapterIndex, cardId: id };
+          saveState(true);
+          refreshCard(id);
+          refreshHeader();
+          refreshChapterProgress();
+        }
+        function dueCards() {
+          var t = todayStr();
+          return ALL_CARDS.filter(function (c) {
+            var r = state.cards[c.id];
+            return r && r.next_review && r.next_review <= t;
+          });
+        }
+        function todayDoneCount() {
+          var t = todayStr(), n = 0;
+          ALL_CARDS.forEach(function (c) {
+            var r = state.cards[c.id];
+            if (r && r.last_review === t) n++;
+          });
+          return n;
+        }
+        function chapterStats(ci) {
+          var total = CHAPTERS[ci].cards.length, indep = 0, rated = 0;
+          CHAPTERS[ci].cards.forEach(function (c) {
+            var r = state.cards[c.id];
+            if (r && r.status && r.status !== "new") rated++;
+            if (r && r.status === "independent") indep++;
+          });
+          return { total: total, indep: indep, rated: rated };
+        }
+
+        /* ================= 渲染卡片 ================= */
+        var revealedZh = {};   // 本次打开内，点开看过中文的卡
+        var cardEls = {};
+
+        function statusLineText(id) {
+          var r = state.cards[id];
+          if (!r || !r.status || r.status === "new") return "还没评分 — 学完点下面一档";
+          var s = "上次：" + "<b>" + STATUS_ZH[r.status] + "</b>";
+          if (r.next_review) {
+            if (r.next_review <= todayStr()) s += " · <b>今天该复习了</b>";
+            else s += " · 下次复习：" + prettyDate(r.next_review);
+          }
+          return s;
+        }
+
+        function buildCard(card) {
+          var el = document.createElement("article");
+          el.className = "card";
+          el.id = "card-" + card.id;
+          el.setAttribute("data-id", card.id);
+
+          var scene = document.createElement("div");
+          scene.className = "scene";
+          scene.style.color = card.color;
+          scene.textContent = card.scene;
+          el.appendChild(scene);
+
+          var en = document.createElement("div");
+          en.className = "en";
+          en.textContent = card.en;
+          el.appendChild(en);
+
+          var ipa = document.createElement("div");
+          ipa.className = "ipa";
+          ipa.textContent = card.ipa;
+          el.appendChild(ipa);
+
+          var tip = document.createElement("div");
+          tip.className = "selftest-tip";
+          tip.textContent = "先看着中文自己说英文，点卡片看答案";
+          el.appendChild(tip);
+
+          var audio = document.createElement("audio");
+          audio.controls = true;
+          audio.preload = "none";
+          audio.src = card.audio;
+          audio.setAttribute("aria-label", "播放发音：" + card.en);
+          el.appendChild(audio);
+
+          var zh = document.createElement("div");
+          zh.className = "zh";
+          zh.setAttribute("role", "button");
+          zh.setAttribute("tabindex", "0");
+          el.appendChild(zh);
+
+          var rateRow = document.createElement("div");
+          rateRow.className = "rate-row";
+          [["unknown", "不会", "r-no"], ["hint", "需要提示", "r-hint"], ["independent", "能独立说出", "r-yes"]].forEach(function (cfg) {
+            var b = document.createElement("button");
+            b.type = "button";
+            b.className = "rate-btn " + cfg[2];
+            b.textContent = cfg[1];
+            b.setAttribute("data-rate", cfg[0]);
+            b.addEventListener("click", function (ev) {
+              ev.stopPropagation();
+              rateCard(card.id, cfg[0]);
+            });
+            rateRow.appendChild(b);
+          });
+          el.appendChild(rateRow);
+
+          var statusLine = document.createElement("div");
+          statusLine.className = "status-line";
+          el.appendChild(statusLine);
+
+          function toggleReveal() {
+            if (document.body.classList.contains("selftest")) {
+              el.classList.toggle("revealed");
+              return;
+            }
+            revealedZh[card.id] = !revealedZh[card.id];
+            paintZh();
+          }
+          zh.addEventListener("click", toggleReveal);
+          zh.addEventListener("keydown", function (e) { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggleReveal(); } });
+          el.addEventListener("click", function () {
+            state.position = { chapter: card.chapterIndex, cardId: card.id };
+            saveState(false);
+            if (document.body.classList.contains("selftest") && !el.classList.contains("revealed")) {
+              el.classList.add("revealed");
+            }
+          });
+
+          function paintZh() {
+            if (document.body.classList.contains("selftest")) {
+              zh.textContent = card.zh;
+              zh.classList.remove("hidden-zh");
+              return;
+            }
+            var show = state.settings.zhHint || revealedZh[card.id];
+            zh.textContent = show ? card.zh : "点一下看中文";
+            zh.classList.toggle("hidden-zh", !show);
+          }
+          el._paintZh = paintZh;
+          el._statusLine = statusLine;
+          el._rateRow = rateRow;
+          el._audio = audio;
+          cardEls[card.id] = el;
+          refreshCard(card.id);
+          return el;
+        }
+
+        function refreshCard(id) {
+          var el = cardEls[id];
+          if (!el) return;
+          var r = state.cards[id];
+          var status = r && r.status ? r.status : "new";
+          el._rateRow.querySelectorAll(".rate-btn").forEach(function (b) {
+            b.classList.toggle("active", b.getAttribute("data-rate") === status);
+          });
+          el._statusLine.innerHTML = statusLineText(id);
+          el._paintZh();
+        }
+        function refreshAllCards() { ALL_CARDS.forEach(function (c) { refreshCard(c.id); }); }
+
+        /* ================= 页眉与章节进度 ================= */
+        function refreshHeader() {
+          document.getElementById("dueCount").textContent = dueCards().length;
+          document.getElementById("todayCount").textContent = todayDoneCount();
+          var pos = state.position || { chapter: 0, cardId: null };
+          var sub = document.getElementById("continueSub");
+          if (pos.cardId && CARD_BY_ID[pos.cardId]) {
+            var c = CARD_BY_ID[pos.cardId];
+            sub.textContent = "第" + (c.chapterIndex + 1) + "章 · " + c.en;
+          } else {
+            sub.textContent = "从第 1 章开始";
+          }
+          var hasAny = ALL_CARDS.some(function (c) { return state.cards[c.id]; });
+          document.getElementById("importHint").hidden = hasAny || state.imported;
+        }
+        function refreshChapterProgress() {
+          [0, 1].forEach(function (ci) {
+            var st = chapterStats(ci);
+            var box = document.getElementById("progress-" + (ci + 1));
+            var pct = st.total ? Math.round(st.indep / st.total * 100) : 0;
+            box.innerHTML = "能独立说出 <b>" + st.indep + " / " + st.total + "</b> 句" +
+              (st.rated > st.indep ? " · 已学过 " + st.rated + " 句" : "") +
+              '<div class="progress-bar"><i style="width:' + pct + '%"></i></div>';
+          });
+        }
+
+        /* ================= 章节滑动 ================= */
+        var currentChapter = 0;
+        var track = document.getElementById("track");
+        function goChapter(idx, focusCardId) {
+          currentChapter = Math.max(0, Math.min(1, idx));
+          track.style.transform = "translateX(" + (-100 * currentChapter) + "%)";
+          document.querySelectorAll(".chapter").forEach(function (sec, i) {
+            sec.classList.toggle("active", i === currentChapter);
+            sec.setAttribute("aria-hidden", i === currentChapter ? "false" : "true");
+          });
+          document.getElementById("pagePos").textContent = "第 " + (currentChapter + 1) + " 章 / 共 2 章";
+          document.getElementById("pageName").textContent = CHAPTERS[currentChapter].name;
+          document.getElementById("prevBtn").disabled = currentChapter === 0;
+          document.getElementById("nextBtn").disabled = currentChapter === 1;
+          if (focusCardId && cardEls[focusCardId]) {
+            setTimeout(function () {
+              cardEls[focusCardId].scrollIntoView({ block: "center", behavior: document.body.classList.contains("no-anim") ? "auto" : "smooth" });
+              document.querySelectorAll(".card.focus").forEach(function (e) { e.classList.remove("focus"); });
+              cardEls[focusCardId].classList.add("focus");
+            }, 60);
+          }
+        }
+        document.getElementById("prevBtn").addEventListener("click", function () { stopPlayAll(); goChapter(currentChapter - 1); });
+        document.getElementById("nextBtn").addEventListener("click", function () { stopPlayAll(); goChapter(currentChapter + 1); });
+        (function () {
+          var startX = null, startY = null;
+          var vp = document.getElementById("viewport");
+          vp.addEventListener("touchstart", function (e) {
+            if (e.touches.length === 1) { startX = e.touches[0].clientX; startY = e.touches[0].clientY; }
+          }, { passive: true });
+          vp.addEventListener("touchend", function (e) {
+            if (startX === null) return;
+            var dx = e.changedTouches[0].clientX - startX;
+            var dy = e.changedTouches[0].clientY - startY;
+            startX = null;
+            if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.6) {
+              stopPlayAll();
+              goChapter(currentChapter + (dx < 0 ? 1 : -1));
+            }
+          }, { passive: true });
+        })();
+
+        /* ================= 设置开关 ================= */
+        function applySettings() {
+          var s = state.settings;
+          document.body.classList.toggle("selftest", !!s.selfTest);
+          document.body.classList.toggle("no-anim", !!s.noAnim);
+          var zhBtn = document.getElementById("toggleZh");
+          zhBtn.setAttribute("aria-pressed", s.zhHint ? "true" : "false");
+          zhBtn.textContent = "中文提示：" + (s.zhHint ? "开" : "关");
+          document.getElementById("toggleSelfTest").setAttribute("aria-pressed", s.selfTest ? "true" : "false");
+          document.getElementById("toggleAnim").setAttribute("aria-pressed", s.noAnim ? "true" : "false");
+          document.getElementById("toggleAnim").textContent = s.noAnim ? "动画：已关" : "关动画";
+          document.querySelectorAll(".speed-group button").forEach(function (b) {
+            b.classList.toggle("active", Number(b.getAttribute("data-speed")) === Number(s.speed));
+          });
+          document.querySelectorAll("audio").forEach(function (a) { a.playbackRate = Number(s.speed) || 1; });
+          refreshAllCards();
+        }
+        document.getElementById("toggleZh").addEventListener("click", function () {
+          state.settings.zhHint = !state.settings.zhHint; saveState(true); applySettings();
+        });
+        document.getElementById("toggleSelfTest").addEventListener("click", function () {
+          state.settings.selfTest = !state.settings.selfTest;
+          document.querySelectorAll(".card.revealed").forEach(function (e) { e.classList.remove("revealed"); });
+          saveState(true); applySettings();
+        });
+        document.getElementById("toggleAnim").addEventListener("click", function () {
+          state.settings.noAnim = !state.settings.noAnim; saveState(true); applySettings();
+        });
+        document.querySelectorAll(".speed-group button").forEach(function (b) {
+          b.addEventListener("click", function () {
+            state.settings.speed = Number(b.getAttribute("data-speed"));
+            saveState(true); applySettings();
+          });
+        });
+
+        /* ================= 连播本章 ================= */
+        var playAll = { active: false, chapter: -1, index: 0, audio: new Audio() };
+        playAll.audio.preload = "auto";
+        function stopPlayAll() {
+          if (!playAll.active) return;
+          playAll.active = false;
+          playAll.audio.pause();
+          document.querySelectorAll(".play-all-btn").forEach(function (b) { b.textContent = "连播本章"; b.classList.remove("playing"); });
+          document.querySelectorAll(".card.focus").forEach(function (e) { e.classList.remove("focus"); });
+        }
+        function playNextInChapter() {
+          if (!playAll.active) return;
+          var cards = CHAPTERS[playAll.chapter].cards;
+          if (playAll.index >= cards.length) { stopPlayAll(); return; }
+          var card = cards[playAll.index];
+          document.querySelectorAll(".card.focus").forEach(function (e) { e.classList.remove("focus"); });
+          if (cardEls[card.id]) {
+            cardEls[card.id].classList.add("focus");
+            cardEls[card.id].scrollIntoView({ block: "center", behavior: "smooth" });
+          }
+          playAll.audio.src = card.audio;
+          playAll.audio.playbackRate = Number(state.settings.speed) || 1;
+          var p = playAll.audio.play();
+          if (p && p.catch) p.catch(function () {});
+        }
+        playAll.audio.addEventListener("ended", function () { playAll.index++; playNextInChapter(); });
+        playAll.audio.addEventListener("error", function () { if (playAll.active) { playAll.index++; playNextInChapter(); } });
+        document.querySelectorAll(".play-all-btn").forEach(function (btn) {
+          btn.addEventListener("click", function () {
+            var ci = Number(btn.getAttribute("data-chapter"));
+            if (playAll.active && playAll.chapter === ci) { stopPlayAll(); return; }
+            stopPlayAll();
+            document.querySelectorAll("audio").forEach(function (a) { if (a !== playAll.audio) a.pause(); });
+            playAll.active = true; playAll.chapter = ci; playAll.index = 0;
+            btn.textContent = "停止连播"; btn.classList.add("playing");
+            playNextInChapter();
+          });
+        });
+
+        /* ================= 复习模式 ================= */
+        var review = { queue: [], index: 0, title: "" };
+        var reviewOverlay = document.getElementById("reviewOverlay");
+        var reviewAudio = document.getElementById("reviewAudio");
+        var reviewZh = document.getElementById("reviewZh");
+
+        function openReview(queue, title, emptyTitle, emptySub) {
+          review.queue = queue.slice();
+          review.index = 0;
+          review.title = title;
+          reviewOverlay.hidden = false;
+          document.body.style.overflow = "hidden";
+          if (!review.queue.length) {
+            document.getElementById("reviewBody").hidden = true;
+            document.getElementById("reviewDone").hidden = true;
+            var emp = document.getElementById("reviewEmpty");
+            emp.hidden = false;
+            if (emptyTitle) document.getElementById("reviewEmptyTitle").textContent = emptyTitle;
+            if (emptySub) document.getElementById("reviewEmptySub").textContent = emptySub;
+            document.getElementById("reviewCounter").textContent = title;
+            return;
+          }
+          document.getElementById("reviewEmpty").hidden = true;
+          document.getElementById("reviewDone").hidden = true;
+          document.getElementById("reviewBody").hidden = false;
+          paintReview();
+        }
+        function paintReview() {
+          var card = review.queue[review.index];
+          if (!card) { closeReviewDone(); return; }
+          document.getElementById("reviewCounter").textContent = review.title + " · " + (review.index + 1) + " / " + review.queue.length;
+          var scene = document.getElementById("reviewScene");
+          scene.textContent = card.scene;
+          scene.style.color = card.color;
+          document.getElementById("reviewEn").textContent = card.en;
+          document.getElementById("reviewIpa").textContent = card.ipa;
+          reviewAudio.src = card.audio;
+          reviewAudio.playbackRate = Number(state.settings.speed) || 1;
+          reviewZh.textContent = "先听音频猜意思，点这里看中文";
+          reviewZh.classList.add("hidden-zh");
+          document.querySelectorAll("#reviewRateRow .rate-btn").forEach(function (b) { b.classList.remove("active"); });
+        }
+        function closeReviewDone() {
+          reviewAudio.pause();
+          document.getElementById("reviewBody").hidden = true;
+          document.getElementById("reviewEmpty").hidden = true;
+          document.getElementById("reviewDone").hidden = false;
+          refreshHeader();
+        }
+        function exitReview() {
+          reviewAudio.pause();
+          reviewOverlay.hidden = true;
+          document.body.style.overflow = "";
+          refreshHeader(); refreshChapterProgress();
+        }
+        reviewZh.addEventListener("click", function () {
+          var card = review.queue[review.index];
+          if (!card) return;
+          reviewZh.textContent = card.zh;
+          reviewZh.classList.remove("hidden-zh");
+        });
+        document.getElementById("reviewReplay").addEventListener("click", function () {
+          reviewAudio.currentTime = 0;
+          reviewAudio.playbackRate = Number(state.settings.speed) || 1;
+          var p = reviewAudio.play(); if (p && p.catch) p.catch(function () {});
+        });
+        document.querySelectorAll("#reviewRateRow .rate-btn").forEach(function (b) {
+          b.addEventListener("click", function () {
+            var card = review.queue[review.index];
+            if (!card) return;
+            rateCard(card.id, b.getAttribute("data-rate"));
+            review.index++;
+            if (review.index >= review.queue.length) closeReviewDone(); else paintReview();
+          });
+        });
+        document.getElementById("reviewNext").addEventListener("click", function () {
+          review.index++;
+          if (review.index >= review.queue.length) closeReviewDone(); else paintReview();
+        });
+        document.getElementById("reviewExit").addEventListener("click", exitReview);
+        document.getElementById("reviewDoneExit").addEventListener("click", exitReview);
+        document.getElementById("reviewEmptyExit").addEventListener("click", exitReview);
+        document.querySelectorAll(".review-chapter-btn").forEach(function (btn) {
+          btn.addEventListener("click", function () {
+            var ci = Number(btn.getAttribute("data-chapter"));
+            var queue = CHAPTERS[ci].cards.filter(function (c) {
+              var r = state.cards[c.id];
+              return r && r.status && r.status !== "new";
+            });
+            stopPlayAll();
+            openReview(queue, "复习第" + (ci + 1) + "章",
+              "这一章还没有评分过的句子",
+              "先学几句、点三档按钮，再回来复习这一章。");
+          });
+        });
+        document.getElementById("btnDue").addEventListener("click", function () {
+          stopPlayAll();
+          openReview(dueCards(), "今日复习",
+            "今天没有到期的句子",
+            "评分过的句子会按 不会→明天 / 需要提示→2天后 / 能独立说出→4天后 排复习，到期了会出现在这里。");
+        });
+
+        /* ================= 继续学习 / 今日完成 ================= */
+        document.getElementById("btnContinue").addEventListener("click", function () {
+          var pos = state.position || { chapter: 0, cardId: null };
+          var ci = pos.chapter || 0;
+          var target = pos.cardId;
+          if (!target) {
+            var next = ALL_CARDS.filter(function (c) {
+              var r = state.cards[c.id];
+              return !r || r.status !== "independent";
+            })[0] || ALL_CARDS[0];
+            target = next.id; ci = next.chapterIndex;
+          }
+          stopPlayAll();
+          goChapter(ci, target);
+        });
+        document.getElementById("btnToday").addEventListener("click", function () {
+          var t = todayStr();
+          var first = ALL_CARDS.filter(function (c) {
+            var r = state.cards[c.id];
+            return r && r.last_review === t;
+          })[0];
+          if (first) { stopPlayAll(); goChapter(first.chapterIndex, first.id); }
+        });
+
+        /* ================= 每章小任务 ================= */
+        document.querySelectorAll(".task-item").forEach(function (item) {
+          var tid = item.getAttribute("data-task");
+          item.addEventListener("click", function () {
+            item.classList.toggle("done");
+            state.tasks[tid] = item.classList.contains("done");
+            if (!state.tasks[tid]) delete state.tasks[tid];
+            saveState(true);
+          });
+        });
+
+        /* ================= 导出（schema_version 2） ================= */
+        function buildExport() {
+          var now = new Date();
+          var chapterData = CHAPTERS.map(function (ch, ci) {
+            var st = chapterStats(ci);
+            return { id: ch.id, name: ch.name, independent: st.indep, rated: st.rated, total: st.total };
+          });
+          var totalIndep = chapterData.reduce(function (a, c) { return a + c.independent; }, 0);
+          var cards = ALL_CARDS.map(function (c) {
+            var r = state.cards[c.id] || { status: "new", streak: 0, last_review: null, next_review: null };
+            return {
+              id: c.id, en: c.en, zh: c.zh,
+              status: r.status || "new",
+              status_zh: STATUS_ZH[r.status || "new"],
+              last_review: r.last_review || null,
+              next_review: r.next_review || null
+            };
+          });
+          return {
+            schema_version: 2,
+            exportedAt: now.toISOString(),
+            exportedAtLocal: now.toLocaleString(),
+            summary: "第1章: " + chapterData[0].independent + "/" + chapterData[0].total +
+                     ", 第2章: " + chapterData[1].independent + "/" + chapterData[1].total +
+                     ", 合计能独立说出: " + totalIndep + "/22",
+            chapters: chapterData,
+            total: { independent: totalIndep, total: 22 },
+            position: state.position,
+            cards: cards
+          };
+        }
+        function setBackupMsg(text, ok) {
+          var msg = document.getElementById("backupMsg");
+          msg.textContent = text;
+          msg.className = "backup-msg " + (ok ? "ok" : "err");
+        }
+        document.getElementById("btnExport").addEventListener("click", function () {
+          var data = buildExport();
+          var text = JSON.stringify(data, null, 2);
+          try {
+            var blob = new Blob([text], { type: "application/json" });
+            var url = URL.createObjectURL(blob);
+            var a = document.createElement("a");
+            a.href = url; a.download = "english-progress.json";
+            document.body.appendChild(a); a.click(); a.remove();
+            setTimeout(function () { URL.revokeObjectURL(url); }, 4000);
+          } catch (e) {}
+          var ta = document.getElementById("exportText");
+          ta.hidden = false;
+          ta.value = text;
+          document.getElementById("pasteTip").hidden = true;
+          setBackupMsg("已导出新版进度（schema_version 2）· " + data.exportedAtLocal + " · " + data.summary, true);
+        });
+        document.getElementById("btnPasteImport").addEventListener("click", function () {
+          var ta = document.getElementById("exportText");
+          if (ta.hidden || !ta.value.trim()) {
+            ta.hidden = false;
+            ta.value = "";
+            document.getElementById("pasteTip").hidden = false;
+            ta.focus();
+            return;
+          }
+          try {
+            importData(JSON.parse(ta.value));
+            document.getElementById("pasteTip").hidden = true;
+          } catch (e) {
+            setBackupMsg("导入失败：框里的内容读不出来，请确认粘贴的是完整的进度文字。", false);
+          }
+        });
+
+        /* ================= 导入（兼容旧版 + 新版） ================= */
+        function applyImportedCards(map, note) {
+          // map: id -> { status, streak, last_review, next_review }
+          var count = 0;
+          Object.keys(map).forEach(function (id) {
+            if (CARD_BY_ID[id]) { state.cards[id] = map[id]; count++; }
+          });
+          // 导入后位置：第一句还没到“能独立说出”的句子
+          var next = ALL_CARDS.filter(function (c) {
+            var r = state.cards[c.id];
+            return !r || r.status !== "independent";
+          })[0] || ALL_CARDS[ALL_CARDS.length - 1];
+          state.position = { chapter: next.chapterIndex, cardId: next.id };
+          state.imported = true;
+          saveState(true);
+          refreshAllCards(); refreshHeader(); refreshChapterProgress();
+          goChapter(next.chapterIndex);
+          var s1 = chapterStats(0), s2 = chapterStats(1);
+          setBackupMsg("导入成功" + (note ? "（" + note + "）" : "") + "：第1章 能独立说出 " + s1.indep + "/" + s1.total +
+            " · 第2章 " + s2.indep + "/" + s2.total + " · 合计 " + (s1.indep + s2.indep) + "/22，已保存到本机，关闭重开也会恢复。", true);
+          return count;
+        }
+        function importData(data) {
+          if (!data || typeof data !== "object") throw new Error("bad");
+          var map = {};
+          if (data.schema_version === 2 && (Array.isArray(data.cards) || (data.cards && typeof data.cards === "object"))) {
+            var list = Array.isArray(data.cards) ? data.cards : Object.keys(data.cards).map(function (k) {
+              var v = data.cards[k]; v.id = k; return v;
+            });
+            list.forEach(function (c) {
+              if (!c || !c.id) return;
+              var st = ["unknown", "hint", "independent"].indexOf(c.status) >= 0 ? c.status : "new";
+              map[c.id] = {
+                status: st,
+                streak: c.streak ? Number(c.streak) : (st === "independent" ? 1 : 0),
+                last_review: c.last_review || null,
+                next_review: c.next_review || (st === "new" ? null : addDays(todayStr(), st === "unknown" ? 1 : st === "hint" ? 2 : 4))
+              };
+            });
+            if (data.position) state.position = data.position;
+            return applyImportedCards(map, "新版进度");
+          }
+          // 旧版格式：knownIds（顶层或每章）
+          var known = [];
+          if (Array.isArray(data.knownIds)) known = known.concat(data.knownIds);
+          if (Array.isArray(data.chapters)) data.chapters.forEach(function (ch) {
+            if (ch && Array.isArray(ch.knownIds)) known = known.concat(ch.knownIds);
+          });
+          if (known.length || Array.isArray(data.knownIds) || Array.isArray(data.chapters)) {
+            var baseDate = todayStr();
+            if (data.exportedAt) {
+              var d = new Date(data.exportedAt);
+              if (!isNaN(d.getTime())) baseDate = fmtDate(d);
+            }
+            known.forEach(function (id) {
+              map[id] = { status: "independent", streak: 1, last_review: baseDate, next_review: addDays(baseDate, 4) };
+            });
+            return applyImportedCards(map, "旧版「我会了」已转为「能独立说出」");
+          }
+          throw new Error("unknown format");
+        }
+        var importFile = document.getElementById("importFile");
+        function triggerImport() { importFile.click(); }
+        document.getElementById("btnImport").addEventListener("click", triggerImport);
+        document.getElementById("hintImportBtn").addEventListener("click", triggerImport);
+        importFile.addEventListener("change", function () {
+          var file = importFile.files && importFile.files[0];
+          if (!file) return;
+          var reader = new FileReader();
+          reader.onload = function () {
+            try {
+              var data = JSON.parse(String(reader.result));
+              importData(data);
+            } catch (e) {
+              setBackupMsg("导入失败：这个文件读不出来，请确认选的是 english-progress.json。", false);
+            }
+            importFile.value = "";
+          };
+          reader.onerror = function () {
+            setBackupMsg("导入失败：文件读取出错，请再试一次。", false);
+            importFile.value = "";
+          };
+          reader.readAsText(file);
+        });
+
+        /* ================= 初始化 ================= */
+        state = loadState();
+        var grid1 = document.getElementById("grid1");
+        var grid2 = document.getElementById("grid2");
+        CHAPTERS[0].cards.forEach(function (c) { grid1.appendChild(buildCard(c)); });
+        CHAPTERS[1].cards.forEach(function (c) { grid2.appendChild(buildCard(c)); });
+        document.querySelectorAll(".task-item").forEach(function (item) {
+          if (state.tasks[item.getAttribute("data-task")]) item.classList.add("done");
+        });
+        applySettings();
+        refreshHeader();
+        refreshChapterProgress();
+        var startChapter = (state.position && state.position.chapter) || 0;
+        goChapter(startChapter);
+        if (!storageOK) setBackupMsg("这个浏览器不允许本地保存，进度只在本次打开有效，建议每次学完导出一份文件。", false);
+      })();
+    </script>
+  </body>
+</html>

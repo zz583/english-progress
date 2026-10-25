@@ -1,1 +1,226 @@
-{"chapters":[{"id":"chapter1","mastered":0,"mastered_ids":[],"name":"打招呼与自我介绍","total":9},{"id":"chapter2","mastered":0,"mastered_ids":[],"name":"数字和时间","total":13}],"learner":"practical-english","source":"lesson-page-export","total":22,"total_mastered":0,"updated_at":""}
+{
+  "schema_version": 2,
+  "exportedAt": "2026-10-25T07:39:11.953Z",
+  "note": "由旧版 english-progress.json 备份升级转换：旧版「我会了」(c1-0 至 c1-8) 转为「能独立说出」，last_review 取备份导出日期，next_review 为 +4 天。",
+  "summary": "第1章: 9/9, 第2章: 0/13, 合计能独立说出: 9/22",
+  "chapters": [
+    {
+      "id": 1,
+      "name": "打招呼与自我介绍",
+      "independent": 9,
+      "rated": 9,
+      "total": 9
+    },
+    {
+      "id": 2,
+      "name": "数字和时间",
+      "independent": 0,
+      "rated": 0,
+      "total": 13
+    }
+  ],
+  "total": {
+    "independent": 9,
+    "total": 22
+  },
+  "cards": [
+    {
+      "id": "c1-0",
+      "en": "Hello",
+      "zh": "你好",
+      "status": "independent",
+      "status_zh": "能独立说出",
+      "last_review": "2026-10-25",
+      "next_review": "2026-10-29"
+    },
+    {
+      "id": "c1-1",
+      "en": "Hi",
+      "zh": "嗨",
+      "status": "independent",
+      "status_zh": "能独立说出",
+      "last_review": "2026-10-25",
+      "next_review": "2026-10-29"
+    },
+    {
+      "id": "c1-2",
+      "en": "Good morning",
+      "zh": "早上好",
+      "status": "independent",
+      "status_zh": "能独立说出",
+      "last_review": "2026-10-25",
+      "next_review": "2026-10-29"
+    },
+    {
+      "id": "c1-3",
+      "en": "Good afternoon",
+      "zh": "下午好",
+      "status": "independent",
+      "status_zh": "能独立说出",
+      "last_review": "2026-10-25",
+      "next_review": "2026-10-29"
+    },
+    {
+      "id": "c1-4",
+      "en": "Good evening",
+      "zh": "晚上好",
+      "status": "independent",
+      "status_zh": "能独立说出",
+      "last_review": "2026-10-25",
+      "next_review": "2026-10-29"
+    },
+    {
+      "id": "c1-5",
+      "en": "How are you?",
+      "zh": "你好吗？",
+      "status": "independent",
+      "status_zh": "能独立说出",
+      "last_review": "2026-10-25",
+      "next_review": "2026-10-29"
+    },
+    {
+      "id": "c1-6",
+      "en": "I'm fine, thank you. And you?",
+      "zh": "我很好，谢谢。你呢？",
+      "status": "independent",
+      "status_zh": "能独立说出",
+      "last_review": "2026-10-25",
+      "next_review": "2026-10-29"
+    },
+    {
+      "id": "c1-7",
+      "en": "Nice to meet you",
+      "zh": "很高兴认识你",
+      "status": "independent",
+      "status_zh": "能独立说出",
+      "last_review": "2026-10-25",
+      "next_review": "2026-10-29"
+    },
+    {
+      "id": "c1-8",
+      "en": "My name is Xunmeng. I am from China.",
+      "zh": "我叫 Xunmeng，我来自中国",
+      "status": "independent",
+      "status_zh": "能独立说出",
+      "last_review": "2026-10-25",
+      "next_review": "2026-10-29"
+    },
+    {
+      "id": "c2-0",
+      "en": "One",
+      "zh": "一",
+      "status": "new",
+      "status_zh": "还没学",
+      "last_review": null,
+      "next_review": null
+    },
+    {
+      "id": "c2-1",
+      "en": "Two",
+      "zh": "二",
+      "status": "new",
+      "status_zh": "还没学",
+      "last_review": null,
+      "next_review": null
+    },
+    {
+      "id": "c2-2",
+      "en": "Three",
+      "zh": "三",
+      "status": "new",
+      "status_zh": "还没学",
+      "last_review": null,
+      "next_review": null
+    },
+    {
+      "id": "c2-3",
+      "en": "Four",
+      "zh": "四",
+      "status": "new",
+      "status_zh": "还没学",
+      "last_review": null,
+      "next_review": null
+    },
+    {
+      "id": "c2-4",
+      "en": "Five",
+      "zh": "五",
+      "status": "new",
+      "status_zh": "还没学",
+      "last_review": null,
+      "next_review": null
+    },
+    {
+      "id": "c2-5",
+      "en": "Six",
+      "zh": "六",
+      "status": "new",
+      "status_zh": "还没学",
+      "last_review": null,
+      "next_review": null
+    },
+    {
+      "id": "c2-6",
+      "en": "Seven",
+      "zh": "七",
+      "status": "new",
+      "status_zh": "还没学",
+      "last_review": null,
+      "next_review": null
+    },
+    {
+      "id": "c2-7",
+      "en": "Eight",
+      "zh": "八",
+      "status": "new",
+      "status_zh": "还没学",
+      "last_review": null,
+      "next_review": null
+    },
+    {
+      "id": "c2-8",
+      "en": "Nine",
+      "zh": "九",
+      "status": "new",
+      "status_zh": "还没学",
+      "last_review": null,
+      "next_review": null
+    },
+    {
+      "id": "c2-9",
+      "en": "Ten",
+      "zh": "十",
+      "status": "new",
+      "status_zh": "还没学",
+      "last_review": null,
+      "next_review": null
+    },
+    {
+      "id": "c2-10",
+      "en": "What time is it?",
+      "zh": "现在几点？",
+      "status": "new",
+      "status_zh": "还没学",
+      "last_review": null,
+      "next_review": null
+    },
+    {
+      "id": "c2-11",
+      "en": "It's three o'clock.",
+      "zh": "现在三点。",
+      "status": "new",
+      "status_zh": "还没学",
+      "last_review": null,
+      "next_review": null
+    },
+    {
+      "id": "c2-12",
+      "en": "It's half past seven.",
+      "zh": "现在七点半。",
+      "status": "new",
+      "status_zh": "还没学",
+      "last_review": null,
+      "next_review": null
+    }
+  ]
+}
