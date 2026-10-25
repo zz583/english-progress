@@ -437,7 +437,7 @@
         <p id="pasteTip" hidden style="margin-top:6px">把进度文字粘贴到上面框里，再点一次「粘贴导入」就会恢复。</p>
       </section>
 
-      <footer class="end-note">共 2 章 · 22 句 · 点三档按钮后会自动安排下次复习时间</footer>
+      <footer class="end-note">共 2 章 · 22 句 · 评分自动保存。点错了可以重新选择，当天只算一次复习。</footer>
     </main>
 
     <nav class="pager" aria-label="章节翻页">
@@ -659,24 +659,30 @@
             refreshChapterProgress();
             showToast(message);
           }
-          // 同日计次保护：今天已经计过一次复习，这一天内再怎么改评分
-          // （能独立说出→需要提示→能独立说出，或任何其他顺序）都不算新一次复习：
-          // 不增加连续次数、不改间隔、不延长下次复习日期、不改已计状态，只提示「今天已评过」。
-          if (countedDate && countedDate === today) {
+          // 同一评分重复点击不变；不同评分允许更正，并从当日基准重算。
+          var sameDay = countedDate === today;
+          if (sameDay && status === prev.status) {
             blocked("今天已评过");
             return;
           }
+          // Corrections are recomputed from the start-of-day record, never from
+          // an intermediate rating. Persist this baseline across reload/backup.
+          var base = sameDay && prev.rating_base ? prev.rating_base : {
+            streak: Math.max(0, (prev.streak || 0) - (sameDay && prev.status === "independent" ? 1 : 0)),
+            next_review: sameDay ? null : prev.next_review,
+            interval: intervalOf(prev, prev.status)
+          };
           // 未到复习日保护：还没到下次复习日期时，再点「能独立说出」不提前升级；
           // 只有到了或超过下次复习日期的那一天重新评分，才按 4天→8天→16天 升级。
-          if (status === "independent" && prev.status === "independent" && prev.next_review && today < prev.next_review) {
+          if (!sameDay && status === "independent" && prev.status === "independent" && prev.next_review && today < prev.next_review) {
             blocked("还没到复习日，不重复升级");
             return;
           }
           var streak = 0, interval = 1;
           if (status === "unknown") { streak = 0; interval = 1; }
-          else if (status === "hint") { streak = prev.streak || 0; interval = 2; }
+          else if (status === "hint") { streak = base.streak; interval = 2; }
           else if (status === "independent") {
-            streak = (prev.streak || 0) + 1;
+            streak = base.streak + (base.next_review && today < base.next_review ? 0 : 1);
             interval = intervalForStreak(streak);
           }
           state.cards[id] = {
@@ -685,11 +691,13 @@
             interval: interval,
             interval_days: interval,
             last_review: today,
-            next_review: addDays(today, interval),
-            counted_review_date: today
+            next_review: status === "independent" && base.next_review && today < base.next_review ? base.next_review : addDays(today, interval),
+            counted_review_date: today,
+            rating_base: base
           };
           if (card) state.position = { chapter: card.chapterIndex, cardId: id };
           saveState(true);
+          if (sameDay) showToast("已修改本次评分，未增加复习次数");
           refreshCard(id);
           refreshHeader();
           refreshChapterProgress();
@@ -1175,7 +1183,8 @@
               interval_days: iv,
               last_review: r.last_review || null,
               next_review: r.next_review || null,
-              counted_review_date: countedOf(r)
+              counted_review_date: countedOf(r),
+              rating_base: r.rating_base || null
             };
           });
           return {
@@ -1277,7 +1286,12 @@
                 interval_days: iv,
                 last_review: c.last_review || null,
                 next_review: c.next_review || (st === "new" ? null : (c.last_review ? addDays(c.last_review, iv || 1) : addDays(todayStr(), iv || 1))),
-                counted_review_date: c.counted_review_date || c.last_review || null
+                counted_review_date: c.counted_review_date || c.last_review || null,
+                rating_base: c.rating_base && Number.isInteger(c.rating_base.streak) && c.rating_base.streak >= 0 ? {
+                  streak: c.rating_base.streak,
+                  next_review: typeof c.rating_base.next_review === "string" && /^\d{4}-\d{2}-\d{2}$/.test(c.rating_base.next_review) ? c.rating_base.next_review : null,
+                  interval: Number(c.rating_base.interval) || 0
+                } : null
               };
               // 若导入文件明确给出 next_review / last_review / counted_review_date 则原样保留，不重置
               if (c.next_review) map[c.id].next_review = c.next_review;
@@ -1314,7 +1328,8 @@
           if (!a || !b) return false;
           return (a.status || "new") === (b.status || "new") && (a.streak || 0) === (b.streak || 0) &&
             (a.last_review || null) === (b.last_review || null) && (a.next_review || null) === (b.next_review || null) &&
-            countedOf(a) === countedOf(b);
+            countedOf(a) === countedOf(b) && intervalOf(a, a.status) === intervalOf(b, b.status) &&
+            JSON.stringify(a.rating_base || null) === JSON.stringify(b.rating_base || null);
         }
         function existingMoreAdvanced(cur, imp) {
           if (!cur || !cur.status || cur.status === "new") return false;

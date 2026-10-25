@@ -1,100 +1,42 @@
-// Test script for the same-day rating loophole fix (english-book-v2)
-// Run with: npm i jsdom   (once)
-//           node test-same-day-rating.js english-book-v2/index.html
-//
-// What it checks (all must PASS, no repo or user progress is modified):
-//  1. Same-day independent -> hint -> independent does NOT change streak or next_review.
-//  2. Same-day independent -> unknown -> independent does NOT change streak or next_review.
-//  3. A due card rated independent upgrades interval 4 -> 8 days.
-//  4. Exported JSON contains counted_review_date, streak, interval and position,
-//     and re-importing it preserves those fields exactly.
-//
-// How it works: it loads the page in jsdom, clicks the real rating buttons
-// (article#card-<id> button[data-rate="independent"|"hint"|"unknown"]),
-// and reads the page's own localStorage key "english-book-v2".
-// It does NOT call internal page functions directly.
-
-const fs = require('fs');
+const fs = require('node:fs');
+const assert = require('node:assert/strict');
 const { JSDOM } = require('jsdom');
-
-const htmlPath = process.argv[2] || 'english-book-v2/index.html';
-const html = fs.readFileSync(htmlPath, 'utf-8');
-
-let failures = 0;
-function check(name, cond, detail) {
-  if (cond) console.log('PASS:', name);
-  else { failures++; console.log('FAIL:', name, detail || ''); }
+const path = require('node:path');
+const html = fs.readFileSync(process.argv[2] || path.join(__dirname, 'index.html'), 'utf8');
+let checks = 0;
+function eq(actual, expected, message) { assert.deepEqual(actual, expected, message); checks++; }
+function open(seed) {
+  return new JSDOM(html, {url:'http://localhost/', runScripts:'dangerously', pretendToBeVisual:true,
+    beforeParse(w) {
+      w.HTMLElement.prototype.scrollIntoView = function(){};
+      w.HTMLMediaElement.prototype.pause = function(){};
+      if(seed) w.localStorage.setItem('english-book-v2', JSON.stringify(seed));
+    }});
 }
-function todayStr() {
-  const d = new Date();
-  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+const read = d => JSON.parse(d.window.localStorage.getItem('english-book-v2'));
+const click = (d,id) => d.window.document.getElementById(id).click();
+const rate = (d,status) => d.window.document.querySelector('#card-c1-0 [data-rate="'+status+'"]').click();
+function paste(d,data) {
+  const t=d.window.document.getElementById('exportText');t.hidden=false;t.value=JSON.stringify(data);
+  click(d,'btnPasteImport');
+  eq(d.window.document.getElementById('importOverlay').hidden,false,'import preview');
+  click(d,'btnMergeImport');
 }
-function addDays(dateStr, n) {
-  const d = new Date(dateStr + 'T00:00:00');
-  d.setDate(d.getDate() + n);
-  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+const base={cards:{'c1-0':{status:'independent',streak:1,interval:4,last_review:'2020-01-01',next_review:'2020-01-05'}},position:{chapter:0,cardId:'c1-0'}};
+for(const sequence of [['independent','hint','independent'],['independent','unknown','independent'],['unknown','hint','independent'],['hint','unknown','independent']]) {
+ const d=open(base);
+ for(const status of sequence) {rate(d,status);eq(read(d).cards['c1-0'].status,status,'correction updates visible status');}
+ let r=read(d).cards['c1-0'];eq(r.streak,2,'only one due-review increment');eq(r.interval,8,'4 to 8 days');
+ const before=JSON.stringify(r);rate(d,'independent');eq(JSON.stringify(read(d).cards['c1-0']),before,'identical rating is idempotent');
+ rate(d,'unknown');eq(read(d).cards['c1-0'].streak,0,'unknown clears streak');eq(read(d).cards['c1-0'].interval,1,'unknown is due tomorrow');
+ const reopened=open(read(d));d.window.close();rate(reopened,'independent');eq(read(reopened).cards['c1-0'].streak,2,'reload preserves baseline');
+ click(reopened,'btnExport');const backup=JSON.parse(reopened.window.document.getElementById('exportText').value);
+ eq(backup.cards[0].rating_base.streak,1,'export preserves baseline');
+ const restored=open();paste(restored,backup);
+ eq(read(restored).cards['c1-0'],read(reopened).cards['c1-0'],'full card roundtrip');eq(read(restored).position,read(reopened).position,'position roundtrip');
+ rate(restored,'hint');rate(restored,'independent');eq(read(restored).cards['c1-0'].streak,2,'correction after import cannot inflate streak');
+ paste(restored,{schema_version:2,cards:[{id:'c1-0',status:'new'}]});eq(read(restored).cards['c1-0'].status,'independent','old empty backup cannot erase learning');
+ restored.window.close();reopened.window.close();
 }
-
-async function main() {
-  const dom = new JSDOM(html, {
-    url: 'http://localhost/',
-    runScripts: 'dangerously',
-    pretendToBeVisual: true,
-  });
-  const { window } = dom;
-  // Wait a tick for the page script to render cards.
-  await new Promise(r => setTimeout(r, 300));
-  const doc = window.document;
-  const getState = () => JSON.parse(window.localStorage.getItem('english-book-v2') || '{}');
-  const clickRate = (cardId, rate) => {
-    const card = doc.querySelector('#card-' + cardId);
-    if (!card) throw new Error('card not found: ' + cardId);
-    const btn = card.querySelector('button[data-rate="' + rate + '"]');
-    if (!btn) throw new Error('rate button not found: ' + cardId + ' ' + rate);
-    btn.click();
-  };
-
-  // --- Test 1: same-day independent -> hint -> independent must not upgrade ---
-  // Seed a card that is already independent with streak 1, interval 4, due today.
-  const today = todayStr();
-  const seed = getState();
-  seed.cards = seed.cards || {};
-  seed.cards['c1-0'] = { status: 'independent', streak: 1, interval: 4, last_review: today, next_review: today, counted_review_date: today };
-  window.localStorage.setItem('english-book-v2', JSON.stringify(seed));
-  window.location.reload ? null : null;
-  // Re-render is not triggered by localStorage alone in this harness; instead
-  // click through the live card (its stored record is the seeded one on load
-  // if the harness reloads, otherwise the assertions below still catch a
-  // streak/next_review change from the click sequence).
-  clickRate('c1-0', 'independent');
-  const after1 = getState().cards['c1-0'];
-  clickRate('c1-0', 'hint');
-  clickRate('c1-0', 'independent');
-  const after3 = getState().cards['c1-0'];
-  check('same-day independent->hint->independent: streak unchanged',
-    after3.streak === after1.streak, JSON.stringify({ after1, after3 }));
-  check('same-day independent->hint->independent: next_review unchanged',
-    after3.next_review === after1.next_review, JSON.stringify({ after1, after3 }));
-  check('same-day independent->hint->independent: counted_review_date is today',
-    after3.counted_review_date === today, JSON.stringify(after3));
-
-  // --- Test 2: due card independent upgrades 4 -> 8 ---
-  const seed2 = getState();
-  seed2.cards['c1-1'] = { status: 'independent', streak: 1, interval: 4, last_review: addDays(today, -4), next_review: today, counted_review_date: addDays(today, -4) };
-  window.localStorage.setItem('english-book-v2', JSON.stringify(seed2));
-  clickRate('c1-1', 'independent');
-  const dueAfter = getState().cards['c1-1'];
-  check('due independent: streak 1 -> 2', dueAfter.streak === 2, JSON.stringify(dueAfter));
-  check('due independent: interval 4 -> 8', dueAfter.interval === 8 || dueAfter.interval_days === 8, JSON.stringify(dueAfter));
-
-  // --- Test 3: export contains counted_review_date / streak / position ---
-  const state = getState();
-  const hasCounted = Object.values(state.cards || {}).some(c => 'counted_review_date' in c);
-  check('state cards contain counted_review_date', hasCounted, '');
-  check('state has a position record', !!(state.position || state.lastPosition || state.cards), '');
-
-  console.log(failures === 0 ? 'ALL TESTS PASSED' : failures + ' TEST(S) FAILED');
-  process.exit(failures === 0 ? 0 : 1);
-}
-
-main().catch(e => { console.error('ERROR:', e); process.exit(2); });
+const fresh=open();rate(fresh,'unknown');rate(fresh,'independent');eq(read(fresh).cards['c1-0'].streak,1,'first learning correction counts once');fresh.window.close();
+console.log('PASS: '+checks+' assertions (real page handlers; isolated jsdom storage).');
